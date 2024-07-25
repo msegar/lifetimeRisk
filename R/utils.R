@@ -19,6 +19,7 @@
 #' print_lr_data(result, group = "level1")
 #' print_lr_data(result, group = "level2", adjusted = TRUE, output = "risk_data.csv")
 #' }
+#' @importFrom dplyr across where
 print_lr_data <- function(result, group = "level1", adjusted = FALSE, output = "console", delimiter = "\t") {
   # Check if the input is a pie_lifetime_risk object
   if (!inherits(result, "pie_lifetime_risk")) {
@@ -51,7 +52,7 @@ print_lr_data <- function(result, group = "level1", adjusted = FALSE, output = "
   if (output == "console") {
     # Print to console
     cat("Age", "Risk", "LCL", "UCL", sep = delimiter, "\n")
-    write.table(export_data, sep = delimiter, row.names = FALSE, col.names = FALSE, quote = FALSE)
+    utils::write.table(export_data, sep = delimiter, row.names = FALSE, col.names = FALSE, quote = FALSE)
   } else {
     # Save to CSV
     readr::write_csv(export_data, file = output)

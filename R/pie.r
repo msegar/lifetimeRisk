@@ -109,6 +109,7 @@
 #' @importFrom dplyr filter mutate group_by summarize
 #' @importFrom ggplot2 ggplot aes geom_line geom_point theme_minimal labs
 #' @importFrom readr write_csv
+#' @importFrom rlang sym
 pie <- function(data, min_age, max_age, age_group_width, group, level1, level2,
                 age_free, o1 = NULL, o2 = NULL,
                 study_label = "Lifetime Risk Study", min_age_group = min_age,

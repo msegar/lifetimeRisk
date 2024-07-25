@@ -14,6 +14,7 @@
 #' @export
 #'
 #' @importFrom dplyr mutate select filter bind_rows arrange full_join
+#' @importFrom rlang :=
 calculate_aa2g <- function(in1, in2, level1, level2, verbose = FALSE) {
   # Ensure agegroup is numeric
   in1$agegroup <- as.numeric(as.character(in1$agegroup))

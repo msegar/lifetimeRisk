@@ -14,6 +14,7 @@
 #' @export
 #'
 #' @importFrom dplyr mutate filter select bind_rows arrange distinct
+#'   ungroup first rename_with
 #' @importFrom tidyr uncount
 preprocess_data <- function(data, max_age, min_age, group, verbose = FALSE) {
   processed <- data %>%

@@ -170,7 +170,7 @@ summarize_lifetime_risk <- function(data) {
 #' @param title Title for the plot
 #'
 #' @return A ggplot object
-#' @importFrom ggplot2 ggplot aes geom_line geom_ribbon theme_minimal labs
+#' @importFrom ggplot2 ggplot aes geom_line geom_ribbon theme_minimal labs scale_color_manual
 generate_lr_plot <- function(data, title) {
   ggplot(data, aes(x = age)) +  # Changed from 'years' to 'age'
     geom_line(aes(y = cf, color = "Unadjusted")) +

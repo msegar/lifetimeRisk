@@ -4,13 +4,7 @@
 \alias{print_lr_data}
 \title{Print or Export Lifetime Risk Data}
 \usage{
-print_lr_data(
-  result,
-  group = "level1",
-  adjusted = FALSE,
-  output = "console",
-  delimiter = "\\t"
-)
+print_lr_data(result, group = "level1", adjusted = FALSE, output = "console")
 }
 \arguments{
 \item{result}{A pie_lifetime_risk object returned by the pie() function}
@@ -20,8 +14,6 @@ print_lr_data(
 \item{adjusted}{Logical, if TRUE export adjusted risk, if FALSE export unadjusted risk. Default is FALSE.}
 
 \item{output}{Either "console" to print to console, or a file path to save as CSV. Default is "console".}
-
-\item{delimiter}{Character to use as delimiter when printing to console. Default is "\t" (tab).}
 }
 \value{
 Invisibly returns the exported data frame

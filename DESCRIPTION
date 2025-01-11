@@ -1,21 +1,35 @@
 Package: lifetimeRisk
-Title: Lifetime Risk Analysis Tools
+Title: Calculate Lifetime Risk with Competing Events
 Version: 0.1.0
 Authors@R: 
-    person("Matthew", "Segar", email = "matt@segar.me", role = c("aut", "cre"))
-Description: A collection of functions for performing lifetime risk analysis, 
-             including incidence rate calculations and cumulative risk estimations.
+    person("Matthew", "Segar", email = "matt@segar.me", role = c("aut", "cre"),
+           comment = c(ORCID = ""))
+Description: Implements methods for calculating lifetime risk estimates from survival data
+    with proper handling of competing risks. The package provides tools for person-year
+    calculations, age-specific incidence rates, cumulative incidence with competing
+    risks, and age-adjusted rates. Methods follow established epidemiological approaches
+    for accurate risk estimation across different age groups and populations.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Imports: 
-    dplyr,
+    data.table (>= 1.14.0),
+    stats,
+    methods,
+    survival,
+    magrittr,
+    ggplot2 (>= 3.4.0),
     tidyr,
-    ggplot2,
-    knitr,
-    readr
+    dplyr
+Depends:
+    data.table (>= 1.14.0)
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    ggplot2
 Config/testthat/edition: 3
+URL: https://github.com/msegar/lifetimeRisk
+BugReports: https://github.com/msegar/lifetimeRisk/issues

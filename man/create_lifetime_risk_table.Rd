@@ -8,8 +8,8 @@ create_lifetime_risk_table(
   data,
   index_ages,
   max_age,
-  group_var,
-  levels,
+  group_var = NULL,
+  group_levels = NULL,
   adjusted = FALSE,
   age_group_width = 5
 )
@@ -23,11 +23,11 @@ create_lifetime_risk_table(
 
 \item{group_var}{Group variable name}
 
-\item{levels}{Vector of group levels to include}
-
 \item{adjusted}{Logical, whether to use competing risk adjusted estimates}
 
 \item{age_group_width}{Width of age groups (default = 5)}
+
+\item{levels}{Vector of group levels to include}
 }
 \value{
 A data frame containing lifetime risks from different starting ages

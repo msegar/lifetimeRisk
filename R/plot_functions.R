@@ -176,3 +176,50 @@ create_lifetime_csv <- function(..., adjusted = TRUE, output_file = "analysis_ou
   # Return result invisibly
   invisible(result)
 }
+
+
+#' Extract Number at Risk from Lifetable Analysis
+#'
+#' @param analysis_obj An object returned by pie_analysis
+#' @param group1_label Label for group1 in the output
+#' @param group2_label Label for group2 in the output
+#' @param age_points Vector of age points at which to display counts
+#' @return A dataframe with number at risk by group and age
+#' @export
+get_number_at_risk_from_analysis <- function(analysis_obj,
+                                             group1_label = "Group 1",
+                                             group2_label = "Group 2",
+                                             age_points = c(50, 60, 70, 80, 90)) {
+
+  # Initialize result dataframe
+  result <- data.frame(Age = age_points)
+
+  # Extract summary data (SDS objects) from the analysis
+  # If we have access to the internal summary datasets:
+  if (exists("SDS1", envir = .GlobalEnv) && exists("SDS2", envir = .GlobalEnv)) {
+    sds1 <- get("SDS1", envir = .GlobalEnv)
+    sds2 <- get("SDS2", envir = .GlobalEnv)
+
+    # Calculate counts at each age point for group 1
+    counts1 <- sapply(age_points, function(age_point) {
+      # Find the closest age row in the summary data
+      row <- sds1[which.min(abs(sds1$age - age_point)), ]
+      # Return the number at risk (R column)
+      return(row$R)
+    })
+
+    # Calculate counts for group 2
+    counts2 <- sapply(age_points, function(age_point) {
+      row <- sds2[which.min(abs(sds2$age - age_point)), ]
+      return(row$R)
+    })
+
+    # Add to result dataframe
+    result[[group1_label]] <- counts1
+    result[[group2_label]] <- counts2
+  } else {
+    warning("SDS1 and SDS2 objects not found. Make sure to run pie_analysis with debug=TRUE.")
+  }
+
+  return(result)
+}

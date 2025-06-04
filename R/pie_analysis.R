@@ -18,70 +18,60 @@ NULL
 #' @param min_age Minimum age to consider
 #' @param max_age Maximum age to consider
 #' @param age_group_width Width of age groups
-#' @param group_var Name of grouping variable
-#' @param group1 First group level
-#' @param group2 Second group level
+#' @param group_var Name of grouping variable (optional, NULL for overall analysis)
+#' @param group_levels Vector of group levels (replaces group1/group2)
 #' @param age_free Starting age for survival analysis
-#' @param output1 Name for first output dataset
-#' @param output2 Name for second output dataset
 #' @param debug If TRUE, save intermediate datasets
 #' @return A list containing all analysis results
 #' @export
 pie_analysis <- function(data, min_age, max_age, age_group_width,
-                         group_var, group1, group2, age_free,
-                         output1 = NULL, output2 = NULL,
-                         debug = FALSE) {
+                         group_var = NULL, group_levels = NULL, age_free,
+                         output1 = NULL, output2 = NULL, debug = FALSE) {
 
-  # Create person-year dataset
+  # Handle grouping BEFORE creating person-year data
+  if (is.null(group_var)) {
+    # Overall analysis - everyone same group
+    data$group <- "overall"
+    group_levels <- "overall"
+  } else {
+    # Copy the grouping variable to 'group' column
+    data$group <- data[[group_var]]
+
+    if (is.null(group_levels)) {
+      group_levels <- sort(unique(data[[group_var]]))
+    }
+  }
+
+  # Now create_person_year_data always finds the 'group' column it expects
   py_data <- create_person_year_data(data, min_age, max_age, debug)
 
-  # Create summary datasets with explicit names
-  sds <- create_summary_dataset(py_data, group_var, c(group1, group2), "SDS", debug)
-  sds1 <- create_summary_dataset(py_data, group_var, group1, "SDS1", debug)
-  sds2 <- create_summary_dataset(py_data, group_var, group2, "SDS2", debug)
-
-  # Calculate rates by group
-  data_group1 <- py_data[get(group_var) == group1]
-  data_group2 <- py_data[get(group_var) == group2]
-
-  rates_group1 <- calculate_age_specific_rates(data_group1, age_group_width, min_age)
-  rates_group2 <- calculate_age_specific_rates(data_group2, age_group_width, min_age)
-
-  # Calculate cumulative incidence
-  ci_group1 <- calculate_cumulative_incidence(data_group1, age_free, debug)
-  ci_group2 <- calculate_cumulative_incidence(data_group2, age_free, debug)
-
-  # Save outputs if specified
-  if (!is.null(output1)) assign(output1, ci_group1, envir = .GlobalEnv)
-  if (!is.null(output2)) assign(output2, ci_group2, envir = .GlobalEnv)
-
-  # Create result object
-  result <- structure(
-    list(
-      age_specific_rates = list(
-        group1 = rates_group1,
-        group2 = rates_group2
-      ),
-      cumulative_incidence = list(
-        group1 = ci_group1,
-        group2 = ci_group2
-      ),
-      parameters = list(
-        min_age = min_age,
-        max_age = max_age,
-        age_group_width = age_group_width,
-        group_var = group_var,
-        group1 = group1,
-        group2 = group2,
-        age_free = age_free
-      )
-    ),
-    class = "pie_analysis"
+  results <- list(
+    age_specific_rates = list(),
+    cumulative_incidence = list(),
+    summary_datasets = list(),
+    parameters = list(
+      min_age = min_age,
+      max_age = max_age,
+      age_group_width = age_group_width,
+      group_var = group_var,  # Keep original parameter
+      group_levels = group_levels,
+      age_free = age_free
+    )
   )
 
-  return(result)
-}
+  for (level in group_levels) {
+    data_group <- py_data[py_data$group == level, ]  # Always use 'group' column
 
+    rates_group <- calculate_age_specific_rates(data_group, age_group_width, min_age)
+    ci_group <- calculate_cumulative_incidence(data_group, age_free, debug)
+
+    results$age_specific_rates[[as.character(level)]] <- rates_group
+    results$cumulative_incidence[[as.character(level)]] <- ci_group
+  }
+
+  class(results) <- "pie_analysis"
+  return(results)
+}
 
 #' Create Lifetime Risk Table from Different Starting Ages
 #'
@@ -94,76 +84,55 @@ pie_analysis <- function(data, min_age, max_age, age_group_width,
 #' @param adjusted Logical, whether to use competing risk adjusted estimates
 #' @return A data frame containing lifetime risks from different starting ages
 #' @export
-create_lifetime_risk_table <- function(data, index_ages, max_age, group_var, levels,
+create_lifetime_risk_table <- function(data, index_ages, max_age,
+                                       group_var = NULL, group_levels = NULL,
                                        adjusted = FALSE, age_group_width = 5) {
-  # Input validation
-  if (!is.data.frame(data)) stop("data must be a data frame")
-  if (!all(c("ids", "entryage", "survage", "status", "astatus", group_var) %in% names(data))) {
-    stop("Missing required columns in data")
-  }
 
-  # Initialize results
   results <- data.frame(
     starting_age = paste0(index_ages, " (until age ", max_age, ")")
   )
 
-  message("Calculating lifetime risks for different starting ages...")
-
-  # Calculate for each pair of levels
-  for (i in 1:(length(levels)-1)) {
-    for (j in (i+1):length(levels)) {
-      message(sprintf("Processing groups %s vs %s...", levels[i], levels[j]))
-
-      # Calculate risks for each starting age
-      risks <- sapply(index_ages, function(start_age) {
-        tryCatch({
-          # Run pie_analysis with current starting age
-          result <- pie_analysis(
-            data = data,
-            min_age = start_age,
-            max_age = max_age,
-            age_group_width = age_group_width,
-            group_var = group_var,
-            group1 = levels[i],
-            group2 = levels[j],
-            age_free = start_age
-          )
-
-          # Get the final risks (last row) for both groups
-          if (adjusted) {
-            g1 <- result$cumulative_incidence$group1$adjusted
-            g2 <- result$cumulative_incidence$group2$adjusted
-          } else {
-            g1 <- result$cumulative_incidence$group1$unadjusted
-            g2 <- result$cumulative_incidence$group2$unadjusted
-          }
-
-          # Extract last row values
-          g1_last <- tail(g1, 1)
-          g2_last <- tail(g2, 1)
-
-          c(g1_last$est, g1_last$lcl, g1_last$ucl,
-            g2_last$est, g2_last$lcl, g2_last$ucl)
-        }, error = function(e) {
-          warning(sprintf("Error calculating risks for age %d: %s",
-                          start_age, conditionMessage(e)))
-          rep(NA, 6)
-        })
-      })
-
-      # Add to results if we have valid calculations
-      if (!all(is.na(risks))) {
-        results[[as.character(levels[i])]] <- sprintf("%.1f (%.1f, %.1f)",
-                                                      risks[1,], risks[2,], risks[3,])
-        results[[as.character(levels[j])]] <- sprintf("%.1f (%.1f, %.1f)",
-                                                      risks[4,], risks[5,], risks[6,])
-      }
-    }
+  # Handle grouping
+  if (is.null(group_var)) {
+    group_levels <- "overall"
+  } else if (is.null(group_levels)) {
+    group_levels <- sort(unique(data[[group_var]]))
   }
 
-  # Add column names
-  names(results)[1] <- "Starting Age"
+  # Calculate for each group
+  for (level in group_levels) {
+    risks <- sapply(index_ages, function(start_age) {
+      tryCatch({
+        result <- pie_analysis(
+          data = data,
+          min_age = start_age,
+          max_age = max_age,
+          age_group_width = age_group_width,
+          group_var = group_var,
+          group_levels = level,
+          age_free = start_age
+        )
 
+        # Get final risk
+        if (adjusted) {
+          final_data <- result$cumulative_incidence[[as.character(level)]]$adjusted
+        } else {
+          final_data <- result$cumulative_incidence[[as.character(level)]]$unadjusted
+        }
+
+        final_row <- tail(final_data, 1)
+        c(final_row$est, final_row$lcl, final_row$ucl)
+      }, error = function(e) {
+        rep(NA, 3)
+      })
+    })
+
+    col_name <- if(is.null(group_var)) "Overall" else as.character(level)
+    results[[col_name]] <- sprintf("%.1f (%.1f, %.1f)",
+                                   risks[1,], risks[2,], risks[3,])
+  }
+
+  names(results)[1] <- "Starting Age"
   return(results)
 }
 

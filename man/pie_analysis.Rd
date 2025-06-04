@@ -9,12 +9,9 @@ pie_analysis(
   min_age,
   max_age,
   age_group_width,
-  group_var,
-  group1,
-  group2,
+  group_var = NULL,
+  group_levels = NULL,
   age_free,
-  output1 = NULL,
-  output2 = NULL,
   debug = FALSE
 )
 }
@@ -34,17 +31,11 @@ pie_analysis(
 
 \item{age_group_width}{Width of age groups}
 
-\item{group_var}{Name of grouping variable}
+\item{group_var}{Name of grouping variable (optional, NULL for overall analysis)}
 
-\item{group1}{First group level}
-
-\item{group2}{Second group level}
+\item{group_levels}{Vector of group levels (replaces group1/group2)}
 
 \item{age_free}{Starting age for survival analysis}
-
-\item{output1}{Name for first output dataset}
-
-\item{output2}{Name for second output dataset}
 
 \item{debug}{If TRUE, save intermediate datasets}
 }

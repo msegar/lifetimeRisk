@@ -179,21 +179,20 @@ summary.pie_analysis <- function(object, ...) {
   cat("Age group width:", object$parameters$age_group_width, "years\n")
   cat("Starting age for lifetime risk:", object$parameters$age_free, "years\n\n")
 
-  # Print group 1 results
-  cat("Results for Group", object$parameters$group1, ":\n")
-  cat("-----------------------\n")
-  final_risk1 <- tail(object$cumulative_incidence$group1$unadjusted, 1)
-  cat("Final cumulative incidence:",
-      sprintf("%.1f%% (%.1f%%, %.1f%%)\n",
-              final_risk1$est, final_risk1$lcl, final_risk1$ucl))
-
-  # Print group 2 results
-  cat("\nResults for Group", object$parameters$group2, ":\n")
-  cat("-----------------------\n")
-  final_risk2 <- tail(object$cumulative_incidence$group2$unadjusted, 1)
-  cat("Final cumulative incidence:",
-      sprintf("%.1f%% (%.1f%%, %.1f%%)\n",
-              final_risk2$est, final_risk2$lcl, final_risk2$ucl))
-
-  cat("\nNote: Values shown as estimate (95% CI)\n")
+  # Loop over all groups
+  for (group in names(object$cumulative_incidence)) {
+    cat("Results for Group", group, ":\n")
+    cat("-----------------------\n")
+    group_data <- object$cumulative_incidence[[group]]$unadjusted
+    if (!is.null(group_data) && nrow(group_data) > 0) {
+      final_risk <- tail(group_data, 1)
+      cat("Final cumulative incidence:",
+          sprintf("%.1f%% (%.1f%%, %.1f%%)\n",
+                  final_risk$est, final_risk$lcl, final_risk$ucl))
+    } else {
+      cat("No data available for this group.\n")
+    }
+    cat("\n")
+  }
+  cat("Note: Values shown as estimate (95% CI)\n")
 }

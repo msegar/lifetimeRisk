@@ -29,53 +29,38 @@ plot_lifetime_risk <- function(result,
                                title = "Cumulative Incidence by Group",
                                theme = NULL,
                                colors = NULL) {
-
-  # Extract data from result object
-  data1 <- if(adjusted) result$cumulative_incidence$group1$adjusted
-  else result$cumulative_incidence$group1$unadjusted
-  data2 <- if(adjusted) result$cumulative_incidence$group2$adjusted
-  else result$cumulative_incidence$group2$unadjusted
-
-  # Create combined dataset for plotting
-  plot_data <- rbind(
-    data.frame(
-      age = data1$age,
-      estimate = data1$est,
-      lcl = data1$lcl,
-      ucl = data1$ucl,
-      group = result$parameters$group1
-    ),
-    data.frame(
-      age = data2$age,
-      estimate = data2$est,
-      lcl = data2$lcl,
-      ucl = data2$ucl,
-      group = result$parameters$group2
+  # Dynamically get group names
+  group_names <- names(result$cumulative_incidence)
+  plot_data_list <- list()
+  for (group in group_names) {
+    data <- if (adjusted) result$cumulative_incidence[[group]]$adjusted
+            else result$cumulative_incidence[[group]]$unadjusted
+    # Skip if data is missing or malformed
+    if (is.null(data) || !all(c("age", "est", "lcl", "ucl") %in% names(data))) next
+    plot_data_list[[group]] <- data.frame(
+      age = data$age,
+      estimate = data$est,
+      lcl = data$lcl,
+      ucl = data$ucl,
+      group = group
     )
-  )
-
-  # Convert group to factor and apply labels if provided
+  }
+  if (length(plot_data_list) == 0) stop("No valid group data to plot.")
+  plot_data <- do.call(rbind, plot_data_list)
   plot_data$group <- as.factor(plot_data$group)
-  if(!is.null(label_names)) {
+  if (!is.null(label_names)) {
     levels(plot_data$group) <- label_names[levels(plot_data$group)]
   }
-
-  # Create base plot
   p <- ggplot(plot_data, aes(x = age, y = estimate, color = group, fill = group)) +
-    # Add confidence intervals
     geom_ribbon(aes(ymin = lcl, ymax = ucl, color = NULL), alpha = 0.2) +
-    # Add lines (using linewidth instead of size)
     geom_line(linewidth = 1) +
-    # Labels
     labs(
       title = title,
       x = "Age (years)",
-      y = if(adjusted) "Adjusted Cumulative Incidence (%)"
-      else "Cumulative Incidence (%)",
+      y = if (adjusted) "Adjusted Cumulative Incidence (%)" else "Cumulative Incidence (%)",
       color = "Group",
       fill = "Group"
     ) +
-    # Theme
     theme_minimal() +
     theme(
       plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
@@ -86,18 +71,13 @@ plot_lifetime_risk <- function(result,
       legend.text = element_text(size = 10),
       panel.grid.minor = element_blank()
     )
-
-  # Apply custom colors if provided
-  if(!is.null(colors)) {
+  if (!is.null(colors)) {
     p <- p + scale_color_manual(values = colors) +
       scale_fill_manual(values = colors)
   }
-
-  # Apply custom theme if provided
-  if(!is.null(theme)) {
+  if (!is.null(theme)) {
     p <- p + theme
   }
-
   return(p)
 }
 

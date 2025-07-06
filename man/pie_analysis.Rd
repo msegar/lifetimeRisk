@@ -12,6 +12,8 @@ pie_analysis(
   group_var = NULL,
   group_levels = NULL,
   age_free,
+  output1 = NULL,
+  output2 = NULL,
   debug = FALSE
 )
 }

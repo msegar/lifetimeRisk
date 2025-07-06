@@ -19,10 +19,11 @@ NULL
 #' @export
 calculate_age_specific_rates <- function(data, age_group_width, min_age) {
   dt <- as.data.table(data)
-
+  if (nrow(dt) == 0) {
+    return(dt[0, .(age_min = integer(), age_max = integer(), events = integer(), person_years = numeric(), rate = numeric())])
+  }
   # Calculate age groups correctly
   dt[, age_group := min_age + (floor((age - min_age) / age_group_width) * age_group_width)]
-
   # Calculate rates by age group
   rates <- dt[, .(
     age_min = unique(age_group),
@@ -31,8 +32,7 @@ calculate_age_specific_rates <- function(data, age_group_width, min_age) {
     person_years = sum(weight),
     rate = 1000 * sum(status) / sum(weight)
   ), by = age_group][order(age_group)]
-
-  # Add total row (equivalent to AGEGROUP = 88 in SAS)
+  # Add total row (equivalent to AGEGROUP = 88 in SAS) only if data is not empty
   total <- dt[, .(
     age_group = 88,
     age_min = min_age,
@@ -41,10 +41,7 @@ calculate_age_specific_rates <- function(data, age_group_width, min_age) {
     person_years = sum(weight),
     rate = 1000 * sum(status) / sum(weight)
   )]
-
-  # Combine and sort
   rates <- rbindlist(list(rates, total))
-
   return(rates[])
 }
 
@@ -68,6 +65,13 @@ create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
 
   # Convert to data.table
   dt <- as.data.table(copy(data))
+  required_cols <- c("ids", "entryage", "survage", "status", "astatus", "group")
+  if (!all(required_cols %in% names(dt))) {
+    stop("Input data must contain columns: ", paste(required_cols, collapse = ", "))
+  }
+  if (nrow(dt) == 0) {
+    return(dt[0, .(ids = integer(), age = integer(), status = integer(), astatus = integer(), weight = numeric(), group = character())])
+  }
 
   # Handle max age exactly as SAS does
   dt[, `:=`(

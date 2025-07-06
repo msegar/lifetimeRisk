@@ -2,8 +2,6 @@ library(testthat)
 
 source("helper-testdata.R")
 
-context("create_person_year_data")
-
 test_that("create_person_year_data works as expected", {
   py <- create_person_year_data(test_data, min_age = 50, max_age = 80)
   expect_s3_class(py, "data.table")
@@ -13,10 +11,12 @@ test_that("create_person_year_data works as expected", {
 
 test_that("create_person_year_data handles empty data", {
   empty <- test_data[0, ]
-  expect_error(create_person_year_data(empty, 50, 80), NA)
+  py <- create_person_year_data(empty, 50, 80)
+  expect_s3_class(py, "data.table")
+  expect_equal(nrow(py), 0)
 })
 
 test_that("create_person_year_data errors on missing columns", {
   bad_data <- test_data[, -which(names(test_data) == "status")]
-  expect_error(create_person_year_data(bad_data, 50, 80))
+  expect_error(create_person_year_data(bad_data, 50, 80), "Input data must contain columns")
 }) 

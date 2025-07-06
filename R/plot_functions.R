@@ -117,41 +117,40 @@ plot_lifetime_risk <- function(result,
 #' create_lifetime_csv(result, adjusted = TRUE, output_file = tempfile())
 #' @export
 create_lifetime_csv <- function(..., adjusted = TRUE, output_file = "analysis_output.csv") {
-  # Get list of all objects passed to function
   objects <- list(...)
-
+  # Accept full pie_analysis object and extract cumulative_incidence if present
+  objects <- lapply(objects, function(obj) {
+    if (inherits(obj, "pie_analysis")) {
+      obj$cumulative_incidence
+    } else {
+      obj
+    }
+  })
   if (length(objects) == 0) {
     stop("At least one analysis object must be provided")
   }
-
   # Validate each object is correct structure
   for (i in seq_along(objects)) {
-    if (!is.list(objects[[i]]) || length(objects[[i]]) != 3) {
-      stop(sprintf("Object %d is not a valid analysis object (must be list of length 3)", i))
+    if (!is.list(objects[[i]]) || length(objects[[i]]) < 1) {
+      stop(sprintf("Object %d is not a valid analysis object (must be a list with group cumulative incidence)", i))
     }
   }
-
-  # Initialize result data frame with age column
-  result <- data.frame(age = objects[[1]]$cumulative_incidence$group1$adjusted$age)
-
-  # Process each object
+  # Build a list of data.frames to merge by age
+  merge_list <- list()
   for (i in seq_along(objects)) {
     obj <- objects[[i]]
-
-    # Get correct data based on adjusted parameter
-    group1_data <- if(adjusted) obj$cumulative_incidence$group1$adjusted else obj$cumulative_incidence$group1$unadjusted
-    group2_data <- if(adjusted) obj$cumulative_incidence$group2$adjusted else obj$cumulative_incidence$group2$unadjusted
-
-    # Add columns with appropriate names
-    suffix <- if(length(objects) > 1) paste0("_obj", i) else ""
-    result[[paste0("group1", suffix)]] <- group1_data$est
-    result[[paste0("group2", suffix)]] <- group2_data$est
+    for (group in names(obj)) {
+      group_data <- if (adjusted) obj[[group]]$adjusted else obj[[group]]$unadjusted
+      suffix <- if (length(objects) > 1) paste0("_obj", i) else ""
+      colname <- paste0(group, suffix)
+      df <- data.frame(age = group_data$age, est = group_data$est)
+      names(df)[2] <- colname
+      merge_list[[length(merge_list) + 1]] <- df
+    }
   }
-
-  # Write to CSV
+  # Merge all by age (full join)
+  result <- Reduce(function(x, y) merge(x, y, by = "age", all = TRUE), merge_list)
   write.csv(result, file = output_file, row.names = FALSE)
-
-  # Return result invisibly
   invisible(result)
 }
 

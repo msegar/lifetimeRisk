@@ -3,7 +3,7 @@ Title: Calculate Lifetime Risk with Competing Events
 Version: 0.1.0
 Authors@R: 
     person("Matthew", "Segar", email = "matt@segar.me", role = c("aut", "cre"),
-           comment = c(ORCID = ""))
+           comment = c(ORCID = "0000-0001-6100-0897"))
 Description: Implements methods for calculating lifetime risk estimates from survival data
     with proper handling of competing risks. The package provides tools for person-year
     calculations, age-specific incidence rates, cumulative incidence with competing

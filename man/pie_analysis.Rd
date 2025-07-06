@@ -39,6 +39,9 @@ pie_analysis(
 
 \item{age_free}{Starting age for survival analysis}
 
+\item{output1}{Optional output parameter (not documented in detail)}
+\item{output2}{Optional output parameter (not documented in detail)}
+
 \item{debug}{If TRUE, save intermediate datasets}
 }
 \value{

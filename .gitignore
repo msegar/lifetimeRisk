@@ -12,3 +12,6 @@ sticker.R
 README.Rmd
 backup
 /Meta/
+.Rcheck/
+..Rcheck/
+/doc/

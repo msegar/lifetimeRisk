@@ -1,2 +1,13 @@
-^doc$
+^.*\.DS_Store$
+^.*\.RData$
+^.*\.Rhistory$
+^.*\.Rproj.user$
+^.*\.git$
+^.*\.gitignore$
+^backup$
+^..Rcheck$
 ^Meta$
+^README\.Rmd$
+^sticker\.R$
+^Rmd/.*
+^doc$

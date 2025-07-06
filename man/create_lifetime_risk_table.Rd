@@ -27,7 +27,7 @@ create_lifetime_risk_table(
 
 \item{age_group_width}{Width of age groups (default = 5)}
 
-\item{levels}{Vector of group levels to include}
+\item{group_levels}{Vector of group levels to include}
 }
 \value{
 A data frame containing lifetime risks from different starting ages

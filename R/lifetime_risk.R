@@ -3,10 +3,20 @@ NULL
 
 #' Calculate Age-Specific Incidence Rates
 #'
-#' @param data Person-year dataset
-#' @param age_group_width Width of age groups
-#' @param min_age Minimum age to consider
-#' @return A data.table with age-specific rates
+#' Computes age-specific incidence rates from a person-year dataset, grouping ages into intervals.
+#'
+#' @param data Person-year dataset (data.frame or data.table) with columns: age, status, weight
+#' @param age_group_width Width of age groups (e.g., 5 for 5-year intervals)
+#' @param min_age Minimum age to consider (start of first group)
+#' @return A data.table with columns: age_min, age_max, events, person_years, rate
+#' @details
+#' The function groups ages into intervals of width `age_group_width` starting at `min_age`,
+#' and calculates the number of events, person-years, and incidence rate per 1000 person-years for each group.
+#' A total row is added (age_group = 88) summarizing all ages.
+#' @examples
+#' py <- create_person_year_data(test_data, 50, 80)
+#' calculate_age_specific_rates(py, 5, 50)
+#' @export
 calculate_age_specific_rates <- function(data, age_group_width, min_age) {
   dt <- as.data.table(data)
 
@@ -40,11 +50,19 @@ calculate_age_specific_rates <- function(data, age_group_width, min_age) {
 
 #' Create person-year dataset for analysis
 #'
-#' @param data Input dataset
+#' Expands input data to a person-year format, with one row per person-year at risk.
+#'
+#' @param data Input dataset (data.frame or data.table) with columns: ids, entryage, survage, status, astatus, group
 #' @param min_age Minimum age to consider
 #' @param max_age Maximum age to consider
-#' @param debug If TRUE, save intermediate datasets
-#' @return A data.table with expanded person-year data
+#' @param debug If TRUE, save intermediate datasets to global environment (for debugging)
+#' @return A data.table with columns: ids, age, status, astatus, weight, group
+#' @details
+#' For each individual, creates rows for each year at risk between entryage and survage (capped at max_age).
+#' Handles partial years and sets weights/status according to SAS PIE macro logic.
+#' @examples
+#' create_person_year_data(test_data, 50, 80)
+#' @export
 create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
   message("Creating person-year dataset...")
 
@@ -113,12 +131,20 @@ create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
 
 #' Create summary dataset (equivalent to SDSMAC)
 #'
+#' Summarizes person-year data by age and group, including total and 90+ rows.
+#'
 #' @param data Person-year dataset
-#' @param group_var Group variable name
-#' @param level Group level(s)
+#' @param group_var Group variable name (string)
+#' @param level Group level(s) to include
 #' @param dataset_name Name to save dataset as when debugging
-#' @param debug If TRUE, save intermediate datasets
-#' @return A data.table with summary statistics
+#' @param debug If TRUE, save summary dataset to global environment
+#' @return A data.table with columns: age, R (at risk), E (events), C (competing), W (weight)
+#' @details
+#' Produces summary statistics by age, with special rows for age 90+ and total (age=999).
+#' @examples
+#' py <- create_person_year_data(test_data, 50, 80)
+#' create_summary_dataset(py, group_var = "group", level = "A")
+#' @export
 create_summary_dataset <- function(data, group_var, level, dataset_name = NULL, debug = FALSE) {
   dt <- as.data.table(data)
 
@@ -158,10 +184,19 @@ create_summary_dataset <- function(data, group_var, level, dataset_name = NULL, 
 }
 #' Calculate cumulative incidence with intermediate datasets
 #'
+#' Computes cumulative incidence and confidence intervals, with and without competing risk adjustment.
+#'
 #' @param data Person-year dataset
 #' @param age_free Starting age for analysis
-#' @param debug If TRUE, save intermediate datasets
-#' @return A list containing unadjusted and adjusted cumulative incidence
+#' @param debug If TRUE, save intermediate datasets to global environment
+#' @return A list with two data.frames: unadjusted and adjusted cumulative incidence (columns: age, est, lcl, ucl)
+#' @details
+#' Follows the SAS PIE macro algorithm for cumulative incidence and standard error calculation.
+#' Returns both unadjusted and competing risk-adjusted estimates.
+#' @examples
+#' py <- create_person_year_data(test_data, 50, 80)
+#' calculate_cumulative_incidence(py, 50)
+#' @export
 calculate_cumulative_incidence <- function(data, age_free, debug = FALSE) {
   if (nrow(data) == 0) return(NULL)
 

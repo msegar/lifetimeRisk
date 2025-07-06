@@ -8,6 +8,8 @@ NULL
 
 #' Plot Lifetime Risk Results
 #'
+#' Plots cumulative incidence curves (adjusted or unadjusted) for two groups from a pie_analysis result.
+#'
 #' @param result Output from pie_analysis function
 #' @param adjusted Logical; use adjusted (TRUE) or unadjusted (FALSE) estimates (default: TRUE)
 #' @param label_names Named vector for group labels, e.g. c("0"="Control", "1"="Treatment")
@@ -15,8 +17,11 @@ NULL
 #' @param theme A custom ggplot theme (optional)
 #' @param colors Vector of colors for groups (optional)
 #' @return A ggplot object
-#' @importFrom ggplot2 ggplot aes geom_ribbon geom_line labs theme_minimal theme
-#' @importFrom ggplot2 element_text element_blank scale_color_manual scale_fill_manual
+#' @details
+#' Plots cumulative incidence with confidence intervals for two groups. Use label_names to customize legend labels.
+#' @examples
+#' result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
+#' plot_lifetime_risk(result, adjusted = TRUE)
 #' @export
 plot_lifetime_risk <- function(result,
                                adjusted = TRUE,
@@ -99,44 +104,17 @@ plot_lifetime_risk <- function(result,
 
 #' Create CSV File of Lifetime Risk Estimates
 #'
-#' @description
-#' Creates a CSV file containing lifetime risk estimates from one or more analysis objects.
-#' Each analysis object contributes two columns of estimates (one for each group), with
-#' age-specific estimates arranged in rows.
+#' Exports lifetime risk estimates for one or more analysis objects to a CSV file.
 #'
-#' @param ... One or more analysis objects, each containing cumulative incidence estimates
-#'   for two groups. Each object must be a list of length 3 with the required structure
-#'   containing adjusted and unadjusted estimates.
-#' @param adjusted Logical indicating whether to use adjusted estimates (TRUE) or
-#'   unadjusted estimates (FALSE). Default is TRUE.
-#' @param output_file Character string specifying the path and name of the output CSV file.
-#'   Default is "analysis_output.csv".
-#'
+#' @param ... One or more analysis objects (from pie_analysis)
+#' @param adjusted Logical indicating whether to use adjusted estimates (TRUE) or unadjusted (FALSE). Default is TRUE.
+#' @param output_file Path and name of the output CSV file. Default is "analysis_output.csv".
+#' @return Invisibly returns a data frame containing the combined estimates.
 #' @details
-#' The function processes each analysis object and extracts either the adjusted or
-#' unadjusted lifetime risk estimates for both groups. For a single object, the output
-#' will contain columns: age, group1, group2. For multiple objects, columns will be
-#' named with object suffixes: age, group1_obj1, group2_obj1, group1_obj2, group2_obj2, etc.
-#'
-#' @return
-#' Invisibly returns a data frame containing the combined estimates. The data frame
-#' is also written to a CSV file at the specified location.
-#'
+#' Each analysis object contributes two columns (one per group). For multiple objects, columns are suffixed.
 #' @examples
-#' \dontrun{
-#' # Single analysis object
-#' create_lifetime_csv(analysis1)
-#'
-#' # Multiple analysis objects
-#' create_lifetime_csv(analysis1, analysis2,
-#'                    output_file = "combined_lifetime.csv")
-#'
-#' # Using unadjusted estimates
-#' create_lifetime_csv(analysis1, analysis2,
-#'                    adjusted = FALSE,
-#'                    output_file = "unadjusted_lifetime.csv")
-#' }
-#'
+#' result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
+#' create_lifetime_csv(result, adjusted = TRUE, output_file = tempfile())
 #' @export
 create_lifetime_csv <- function(..., adjusted = TRUE, output_file = "analysis_output.csv") {
   # Get list of all objects passed to function
@@ -180,11 +158,17 @@ create_lifetime_csv <- function(..., adjusted = TRUE, output_file = "analysis_ou
 
 #' Extract Number at Risk from Lifetable Analysis
 #'
+#' Extracts the number at risk at specified ages for each group from a pie_analysis result.
+#'
 #' @param analysis_obj An object returned by pie_analysis
 #' @param group1_label Label for group1 in the output
 #' @param group2_label Label for group2 in the output
 #' @param age_points Vector of age points at which to display counts
 #' @return A dataframe with number at risk by group and age
+#' @details
+#' Requires that pie_analysis was run with debug=TRUE and that summary datasets (SDS1, SDS2) are available in the global environment.
+#' @examples
+#' # Only works if SDS1 and SDS2 exist in global environment
 #' @export
 get_number_at_risk_from_analysis <- function(analysis_obj,
                                              group1_label = "Group 1",

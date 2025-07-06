@@ -7,22 +7,26 @@ NULL
 
 #' Main Analysis Function
 #'
-#' @param data A data frame containing the input data. It should have the following columns:
-#'   \itemize{
-#'     \item ids: Unique identifier for each individual
-#'     \item entryage: Age at which the individual entered the study
-#'     \item survage: Age at which the individual was last observed (due to event occurrence or end of follow-up)
-#'     \item status: Indicator for the primary event of interest (1 if occurred, 0 if not)
-#'     \item astatus: Indicator for a competing event (1 if occurred, 0 if not)
-#'   }
+#' Performs person-year and lifetime risk analysis, including age-specific rates and cumulative incidence, for the overall population or by group.
+#'
+#' @param data A data frame containing the input data. Must include: ids, entryage, survage, status, astatus, and optionally grouping variables.
 #' @param min_age Minimum age to consider
 #' @param max_age Maximum age to consider
-#' @param age_group_width Width of age groups
-#' @param group_var Name of grouping variable (optional, NULL for overall analysis)
-#' @param group_levels Vector of group levels (replaces group1/group2)
+#' @param age_group_width Width of age groups (e.g., 5 for 5-year intervals)
+#' @param group_var Name of grouping variable (string, optional, NULL for overall analysis)
+#' @param group_levels Vector of group levels to analyze (NULL to auto-detect all levels)
 #' @param age_free Starting age for survival analysis
-#' @param debug If TRUE, save intermediate datasets
-#' @return A list containing all analysis results
+#' @param debug If TRUE, save intermediate datasets to global environment
+#' @return An S3 object of class 'pie_analysis' containing:
+#'   - age_specific_rates: list of data.tables by group
+#'   - cumulative_incidence: list of data.frames by group
+#'   - summary_datasets: list of summary tables by group
+#'   - parameters: list of analysis parameters
+#' @details
+#' This function implements the full PIE macro workflow, including person-year expansion, age-specific rates, and cumulative incidence with and without competing risk adjustment. Handles any number of groups.
+#' @examples
+#' result <- pie_analysis(test_data, min_age = 50, max_age = 80, age_group_width = 5, group_var = "group", age_free = 50)
+#' summary(result)
 #' @export
 pie_analysis <- function(data, min_age, max_age, age_group_width,
                          group_var = NULL, group_levels = NULL, age_free,
@@ -75,14 +79,20 @@ pie_analysis <- function(data, min_age, max_age, age_group_width,
 
 #' Create Lifetime Risk Table from Different Starting Ages
 #'
+#' Summarizes lifetime risk estimates for multiple starting ages and groups.
+#'
 #' @param data Input dataset
 #' @param index_ages Vector of starting ages
 #' @param max_age Maximum age to consider
-#' @param age_group_width Width of age groups (default = 5)
-#' @param group_var Group variable name
-#' @param levels Vector of group levels to include
+#' @param group_var Group variable name (optional)
+#' @param group_levels Vector of group levels to include (optional)
 #' @param adjusted Logical, whether to use competing risk adjusted estimates
-#' @return A data frame containing lifetime risks from different starting ages
+#' @param age_group_width Width of age groups (default = 5)
+#' @return A data.frame with lifetime risk estimates for each group and starting age
+#' @details
+#' For each group and starting age, runs the full analysis and extracts the final cumulative incidence (estimate and 95% CI).
+#' @examples
+#' create_lifetime_risk_table(test_data, index_ages = c(50, 60), max_age = 80, group_var = "group")
 #' @export
 create_lifetime_risk_table <- function(data, index_ages, max_age,
                                        group_var = NULL, group_levels = NULL,
@@ -138,6 +148,7 @@ create_lifetime_risk_table <- function(data, index_ages, max_age,
 
 #' Print method for pie_analysis objects
 #'
+#' Prints a summary of analysis parameters. Use summary() for detailed results.
 #' @param x A pie_analysis object
 #' @param ... Additional arguments (not used)
 #' @export
@@ -153,6 +164,7 @@ print.pie_analysis <- function(x, ...) {
 
 #' Summary method for pie_analysis objects
 #'
+#' Prints a detailed summary of results for each group, including final cumulative incidence and confidence intervals.
 #' @param object A pie_analysis object
 #' @param ... Additional arguments (not used)
 #' @export

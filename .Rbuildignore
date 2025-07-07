@@ -11,3 +11,5 @@
 ^sticker\.R$
 ^Rmd/.*
 ^doc$
+^.*\.Rproj$
+^\.Rproj\.user$

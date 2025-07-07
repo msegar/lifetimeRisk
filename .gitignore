@@ -15,3 +15,5 @@ backup
 .Rcheck/
 ..Rcheck/
 /doc/
+*.docx
+*.pptx

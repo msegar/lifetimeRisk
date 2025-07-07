@@ -186,8 +186,8 @@ devtools::test()
 
 ## Citation
 If you use this package, please cite:
-- The original SAS PIE macro authors (see package documentation)
-- Relevant cardiovascular epidemiology literature
+- Lloyd-Jones DM, Martin DO, Larson MG, Levy D. Lifetime risk of developing coronary heart disease. Lancet. 1999;353(9147):89-92.
+- Beiser A, D'Agostino RB Sr, Seshadri S, Sullivan LM, Wolf PA. Computing estimates of incidence, including lifetime risk: Alzheimer's disease in the Framingham Study. The Practical Incidence Estimators (PIE) macro. Stat Med. 2000 Jun;19(11-12):1495-522. [PubMed PMID: 10844714](https://pubmed.ncbi.nlm.nih.gov/10844714/)
 
 ## License
 See LICENSE file for details.

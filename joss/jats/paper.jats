@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD v1.2 20190208//EN"
+                  "JATS-publishing1.dtd">
+<article xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:xlink="http://www.w3.org/1999/xlink" dtd-version="1.2" article-type="other">
+<front>
+<journal-meta>
+<journal-id></journal-id>
+<journal-title-group>
+<journal-title>Journal of Open Source Software</journal-title>
+<abbrev-journal-title>JOSS</abbrev-journal-title>
+</journal-title-group>
+<issn publication-format="electronic">2475-9066</issn>
+<publisher>
+<publisher-name>Open Journals</publisher-name>
+</publisher>
+</journal-meta>
+<article-meta>
+<article-id pub-id-type="publisher-id">0</article-id>
+<article-id pub-id-type="doi">N/A</article-id>
+<title-group>
+<article-title>lifetimeRisk: An R package for lifetime risk analysis
+with competing risks</article-title>
+</title-group>
+<contrib-group>
+<contrib contrib-type="author" corresp="yes">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0001-6100-0897</contrib-id>
+<name>
+<surname>Segar</surname>
+<given-names>Matthew W.</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+<xref ref-type="corresp" rid="cor-1"><sup>*</sup></xref>
+</contrib>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0001-7399-2299</contrib-id>
+<name>
+<surname>Jaeger</surname>
+<given-names>Byron C.</given-names>
+</name>
+<xref ref-type="aff" rid="aff-2"/>
+</contrib>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0001-9651-3836</contrib-id>
+<name>
+<surname>Pandey</surname>
+<given-names>Ambarish</given-names>
+</name>
+<xref ref-type="aff" rid="aff-3"/>
+</contrib>
+<aff id="aff-1">
+<institution-wrap>
+<institution>Department of Cardiology, Texas Heart Institute, Houston,
+TX</institution>
+</institution-wrap>
+</aff>
+<aff id="aff-2">
+<institution-wrap>
+<institution>Perisphere Real World Evidence LLC, Austin,
+Texas</institution>
+</institution-wrap>
+</aff>
+<aff id="aff-3">
+<institution-wrap>
+<institution>Division of Caridology, Department of Internal Medicine, UT
+Southwestern Medical Center, Dallas, TX</institution>
+</institution-wrap>
+</aff>
+</contrib-group>
+<author-notes>
+<corresp id="cor-1">* E-mail: <email></email></corresp>
+</author-notes>
+<pub-date date-type="pub" publication-format="electronic" iso-8601-date="2025-07-07">
+<day>7</day>
+<month>7</month>
+<year>2025</year>
+</pub-date>
+<volume>¿VOL?</volume>
+<issue>¿ISSUE?</issue>
+<fpage>¿PAGE?</fpage>
+<permissions>
+<copyright-statement>Authors of papers retain copyright and release the
+work under a Creative Commons Attribution 4.0 International License (CC
+BY 4.0)</copyright-statement>
+<copyright-year>1970</copyright-year>
+<copyright-holder>The article authors</copyright-holder>
+<license license-type="open-access" xlink:href="https://creativecommons.org/licenses/by/4.0/">
+<license-p>Authors of papers retain copyright and release the work under
+a Creative Commons Attribution 4.0 International License (CC BY
+4.0)</license-p>
+</license>
+</permissions>
+<kwd-group kwd-group-type="author">
+<kwd>R</kwd>
+<kwd>epidemiology</kwd>
+<kwd>survival analysis</kwd>
+<kwd>competing risks</kwd>
+<kwd>lifetime risk</kwd>
+<kwd>cardiovascular disease</kwd>
+</kwd-group>
+</article-meta>
+</front>
+<body>
+<sec id="summary">
+  <title>Summary</title>
+  <p>Lifetime risk estimation is fundamental to understanding long-term
+  disease burden and provides important insights for epidemiologists and
+  clinicians assessing population health across diverse medical domains.
+  The <monospace>lifetimeRisk</monospace> package provides tools for
+  calculating lifetime risk of adverse outcomes while properly
+  accounting for competing risks, implementing the methodology
+  established by the SAS Practical Incidence Estimators (PIE) macro
+  (<xref alt="Beiser et al., 2000" rid="ref-beiser2000computing" ref-type="bibr">Beiser
+  et al., 2000</xref>). Originally developed for Alzheimer’s disease
+  research in the Framingham Study, the PIE macro provides a widely-used
+  framework for lifetime risk calculations across epidemiological
+  research, from cardiovascular disease and cancer to dementia and
+  chronic diseases. The package enables person-year calculations,
+  age-specific incidence rates, cumulative incidence with competing
+  risks, and age-adjusted rates using the same statistical algorithms as
+  the original PIE macro. All statistical computations have been
+  validated against the reference SAS implementation to ensure
+  methodological consistency and numerical equivalence for research
+  applications.</p>
+</sec>
+<sec id="statement-of-need">
+  <title>Statement of need</title>
+  <p>Lifetime risk analysis extends traditional short-term risk
+  assessment and has influenced medical research and clinical practice
+  across multiple disciplines. The fundamental challenge addressed by
+  lifetime risk methodology is that conventional 10-year risk models
+  often underestimate long-term disease burden, particularly in younger
+  populations who may face substantial cumulative risk despite appearing
+  low-risk in short-term assessments. The statistical complexity lies in
+  properly accounting for competing risks, where multiple potential
+  outcomes can preclude the occurrence of the primary endpoint of
+  interest. This is particularly relevant in aging populations where
+  cardiovascular disease, cancer, and other-cause mortality compete as
+  terminal events.</p>
+  <p>The impact of this methodology is evident in cardiovascular
+  epidemiology, where lifetime risk studies have changed understanding
+  of disease burden and clinical decision-making. Landmark studies by
+  Lloyd-Jones et al. and Berry et al. demonstrated marked differences in
+  lifetime cardiovascular disease risks across racial groups
+  (<xref alt="Berry et al., 2012" rid="ref-berry2012lifetime" ref-type="bibr">Berry
+  et al., 2012</xref>;
+  <xref alt="Lloyd-Jones et al., 1999" rid="ref-lloydJones1999lifetime" ref-type="bibr">Lloyd-Jones
+  et al., 1999</xref>). These studies, along with subsequent
+  publications demonstrating lifetime risks exceeding 30% even for
+  individuals with optimal risk factors
+  (<xref alt="Wilkins et al., 2012" rid="ref-wilkins2012lifetime" ref-type="bibr">Wilkins
+  et al., 2012</xref>) and significant differences across sex-based
+  groups
+  (<xref alt="Pandey et al., 2018" rid="ref-pandey2018sex" ref-type="bibr">Pandey
+  et al., 2018</xref>), have established lifetime risk as important for
+  clinical decision-making and population health assessment.</p>
+  <p>Despite widespread use of these methods in high-impact research,
+  accessible implementations have been limited. While R packages such as
+  <monospace>survival</monospace>, <monospace>cmprsk</monospace>, and
+  <monospace>etm</monospace> provide foundational competing risks
+  methods, none offer the lifetime risk calculation framework with
+  standardized output formats established by the PIE macro. The
+  <monospace>lifetimeRisk</monospace> package fills this gap by
+  providing an R implementation of the PIE macro methodology and enables
+  researchers to perform lifetime risk analyses without requiring SAS
+  software.</p>
+</sec>
+<sec id="implementation">
+  <title>Implementation</title>
+  <sec id="statistical-methodology">
+    <title>Statistical methodology</title>
+    <p>Lifetime risk estimation employs life table methodology to
+    estimate the absolute probability that an individual will develop a
+    disease if they live long enough, accounting for competing risks of
+    death from other causes. This approach differs from Cox proportional
+    hazards models by providing absolute risk estimates rather than
+    relative hazards. The mathematical foundation begins with
+    age-specific incidence rates and mortality rates from cohort data,
+    calculating the probability of developing the disease of interest,
+    dying from the disease, and dying from competing causes for each age
+    interval.</p>
+    <p>The lifetime risk is computed as the cumulative probability of
+    experiencing the event across all age intervals until a maximum age,
+    typically 85 or 95 years. This requires estimation of age-specific
+    hazard rates <inline-formula><alternatives>
+    <tex-math><![CDATA[\lambda_d(a)]]></tex-math>
+    <mml:math display="inline" xmlns:mml="http://www.w3.org/1998/Math/MathML"><mml:mrow><mml:msub><mml:mi>λ</mml:mi><mml:mi>d</mml:mi></mml:msub><mml:mrow><mml:mo stretchy="true" form="prefix">(</mml:mo><mml:mi>a</mml:mi><mml:mo stretchy="true" form="postfix">)</mml:mo></mml:mrow></mml:mrow></mml:math></alternatives></inline-formula>
+    for the disease of interest and <inline-formula><alternatives>
+    <tex-math><![CDATA[\lambda_c(a)]]></tex-math>
+    <mml:math display="inline" xmlns:mml="http://www.w3.org/1998/Math/MathML"><mml:mrow><mml:msub><mml:mi>λ</mml:mi><mml:mi>c</mml:mi></mml:msub><mml:mrow><mml:mo stretchy="true" form="prefix">(</mml:mo><mml:mi>a</mml:mi><mml:mo stretchy="true" form="postfix">)</mml:mo></mml:mrow></mml:mrow></mml:math></alternatives></inline-formula>
+    for competing risks at age <inline-formula><alternatives>
+    <tex-math><![CDATA[a]]></tex-math>
+    <mml:math display="inline" xmlns:mml="http://www.w3.org/1998/Math/MathML"><mml:mi>a</mml:mi></mml:math></alternatives></inline-formula>,
+    where the cumulative incidence function
+    <inline-formula><alternatives>
+    <tex-math><![CDATA[F(t) = \int_0^t \lambda_d(a) \times S(a) , da]]></tex-math>
+    <mml:math display="inline" xmlns:mml="http://www.w3.org/1998/Math/MathML"><mml:mrow><mml:mi>F</mml:mi><mml:mrow><mml:mo stretchy="true" form="prefix">(</mml:mo><mml:mi>t</mml:mi><mml:mo stretchy="true" form="postfix">)</mml:mo></mml:mrow><mml:mo>=</mml:mo><mml:msubsup><mml:mo>∫</mml:mo><mml:mn>0</mml:mn><mml:mi>t</mml:mi></mml:msubsup><mml:msub><mml:mi>λ</mml:mi><mml:mi>d</mml:mi></mml:msub><mml:mrow><mml:mo stretchy="true" form="prefix">(</mml:mo><mml:mi>a</mml:mi><mml:mo stretchy="true" form="postfix">)</mml:mo></mml:mrow><mml:mo>×</mml:mo><mml:mi>S</mml:mi><mml:mrow><mml:mo stretchy="true" form="prefix">(</mml:mo><mml:mi>a</mml:mi><mml:mo stretchy="true" form="postfix">)</mml:mo></mml:mrow><mml:mo>,</mml:mo><mml:mi>d</mml:mi><mml:mi>a</mml:mi></mml:mrow></mml:math></alternatives></inline-formula>,
+    and <inline-formula><alternatives>
+    <tex-math><![CDATA[S(a)]]></tex-math>
+    <mml:math display="inline" xmlns:mml="http://www.w3.org/1998/Math/MathML"><mml:mrow><mml:mi>S</mml:mi><mml:mrow><mml:mo stretchy="true" form="prefix">(</mml:mo><mml:mi>a</mml:mi><mml:mo stretchy="true" form="postfix">)</mml:mo></mml:mrow></mml:mrow></mml:math></alternatives></inline-formula>
+    represents the overall survival function incorporating both disease
+    and competing mortality.</p>
+    <p>The PIE macro methodology extends basic life table approaches by
+    implementing competing risks adjustments that properly account for
+    interdependence between multiple potential outcomes
+    (<xref alt="Fine &amp; Gray, 1999" rid="ref-fine1999proportional" ref-type="bibr">Fine
+    &amp; Gray, 1999</xref>). Unlike Kaplan-Meier survival curves that
+    treat competing events as censored observations, the PIE approach
+    explicitly models competing risks to provide unbiased estimates of
+    cumulative incidence. This ensures that the sum of all
+    cause-specific cumulative incidence functions equals one minus the
+    overall survival probability.</p>
+  </sec>
+  <sec id="software-architecture">
+    <title>Software architecture</title>
+    <p>The <monospace>lifetimeRisk</monospace> package implements this
+    statistical methodology through a software architecture that
+    prioritizes computational efficiency, numerical accuracy, and user
+    accessibility. The core statistical engine translates the PIE macro
+    algorithms into R code. Mathematical equivalence is maintained while
+    leveraging the survival package for fundamental computations,
+    <monospace>data.table</monospace> for efficient data management and
+    transformation, and <monospace>ggplot2</monospace> for
+    visualization.</p>
+    <p>Central to the package’s reliability is its validation framework
+    that ensures numerical accuracy and methodological consistency with
+    the reference SAS implementation. All statistical computations have
+    been tested against the original PIE macro through validation
+    studies using both simulated and real-world datasets spanning
+    different study designs, population characteristics, and event
+    rates. The validation process encompasses comparison of age-specific
+    incidence rates, cumulative incidence estimates, confidence
+    intervals, and summary statistics.</p>
+    <p>Performance benchmarking demonstrates that the package scales
+    efficiently with dataset size. Table 1 shows execution times and
+    memory usage across datasets ranging from 1,000 to 1,000,000
+    observations. The package maintains consistent processing rates of
+    approximately 50,000-60,000 observations per second for larger
+    datasets, with memory usage scaling linearly with data size. These
+    performance characteristics make the package suitable for
+    large-scale epidemiological studies typical in cardiovascular and
+    population health research.</p>
+    <p><bold>Table 1.</bold> Performance benchmarks for
+    <monospace>lifetimeRisk</monospace> package across different dataset
+    sizes.</p>
+    <table-wrap>
+      <table>
+        <colgroup>
+          <col width="18%" />
+          <col width="28%" />
+          <col width="24%" />
+          <col width="30%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th align="left">Dataset Size</th>
+            <th align="left">Median Time (seconds)</th>
+            <th align="left">Memory Usage (MB)</th>
+            <th align="left">Observations per Second</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left">1,000</td>
+            <td align="left">0.04</td>
+            <td align="left">0.0</td>
+            <td align="left">23,882</td>
+          </tr>
+          <tr>
+            <td align="left">5,000</td>
+            <td align="left">0.10</td>
+            <td align="left">0.2</td>
+            <td align="left">50,570</td>
+          </tr>
+          <tr>
+            <td align="left">10,000</td>
+            <td align="left">0.18</td>
+            <td align="left">0.4</td>
+            <td align="left">56,204</td>
+          </tr>
+          <tr>
+            <td align="left">25,000</td>
+            <td align="left">0.54</td>
+            <td align="left">1.0</td>
+            <td align="left">46,167</td>
+          </tr>
+          <tr>
+            <td align="left">50,000</td>
+            <td align="left">0.88</td>
+            <td align="left">1.9</td>
+            <td align="left">56,714</td>
+          </tr>
+          <tr>
+            <td align="left">100,000</td>
+            <td align="left">1.64</td>
+            <td align="left">3.8</td>
+            <td align="left">61,024</td>
+          </tr>
+          <tr>
+            <td align="left">1,000,000</td>
+            <td align="left">14.44</td>
+            <td align="left">38.1</td>
+            <td align="left">69,269</td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
+    <p><italic>Note: Benchmarks performed using
+    <monospace>microbenchmark</monospace> package with 5 replications
+    per dataset size on standard computing hardware.</italic></p>
+    <fig id="figU003Afig-1">
+      <caption><p> Example output from the ‘lifetimeRisk‘ package
+      demonstrating (A) summary statistics for sex-stratified lifetime
+      risk analysis showing final cumulative incidence estimates, and
+      (B) competing risks-adjusted cumulative incidence curves
+      illustrating lifetime risk trajectories between men and women from
+      age 45 to 90 years, with shaded confidence bands indicating 95%
+      confidence intervals.</p></caption>
+      <graphic mimetype="image" mime-subtype="png" xlink:href="Figure.png" />
+    </fig>
+    <p>The package provides a function library designed for both novice
+    and expert users. Key functions include
+    <monospace>pie_analysis()</monospace> for complete lifetime risk
+    analysis implementing the full PIE macro methodology,
+    <monospace>calculate_age_specific_rates()</monospace> for detailed
+    age-stratified incidence computations,
+    <monospace>calculate_cumulative_incidence()</monospace> for
+    competing risks-adjusted cumulative incidence calculation
+    (<bold>Figure 1A</bold>), and specialized visualization and export
+    functions. The <monospace>plot_lifetime_risk()</monospace> function
+    generates publication-ready graphics with customizable confidence
+    intervals (<bold>Figure 1B</bold>), while
+    <monospace>create_lifetime_risk_table()</monospace> produces
+    standardized summary tables suitable for manuscript inclusion.</p>
+  </sec>
+</sec>
+<sec id="research-applications-and-impact">
+  <title>Research applications and impact</title>
+  <p>The <monospace>lifetimeRisk</monospace> package addresses a need in
+  epidemiological research for a freely accessible, open-source
+  implementation of life time risk methodology, which has been widely
+  cited in epidemiological literature and has influenced clinical
+  practice guidelines. The package has been successfully applied in
+  cardiovascular epidemiology research, including our recent multicohort
+  study examining P-wave parameters and lifetime atrial fibrillation
+  risk
+  (<xref alt="Segar et al., 2025" rid="ref-segar2025ecg" ref-type="bibr">Segar
+  et al., 2025</xref>). In this analysis of 25,508 participants from 4
+  prospective cohort studies, we used the
+  <monospace>lifetimeRisk</monospace> package to demonstrate that
+  participants with multiple ECG abnormalities had lifetime AF risks
+  reaching 35.7% compared to 22.9% for those with minimal abnormalities,
+  with participants having 4+ ECG abnormalities living an average of
+  17.1 years free of AF compared to 21.7 years for those with none. This
+  application demonstrates the package’s capability to handle
+  large-scale multicohort analyses and produce clinically meaningful
+  lifetime risk estimates that inform patient care and risk
+  stratification.</p>
+  <p>The broad applicability of lifetime risk methods extends across
+  medical specialties. Cancer epidemiologists have used these approaches
+  to develop global estimates of lifetime cancer risk, while
+  neurological research has employed lifetime risk calculations to
+  understand dementia patterns. Public health researchers have applied
+  the methodology to examine health disparities and assess long-term
+  health impacts of exposures. Recent applications demonstrate continued
+  relevance, including population-specific lifetime risk tools and
+  comprehensive models for diverse populations.</p>
+  <p>The <monospace>lifetimeRisk</monospace> package facilitates these
+  research applications by providing a documented platform that removes
+  technical barriers to implementing lifetime risk analyses. The package
+  includes documentation, worked examples across different research
+  domains, and flexible functions that accommodate various study designs
+  and research questions, enabling researchers without extensive
+  statistical programming backgrounds to apply these methods to their
+  research.</p>
+</sec>
+<sec id="acknowledgements">
+  <title>Acknowledgements</title>
+  <p>This implementation builds upon the foundational statistical
+  methodology established by Beiser et al. in the original SAS PIE macro
+  and acknowledges the extensive validation and application work
+  conducted in landmark epidemiological studies. We recognize the impact
+  of this methodology on epidemiological research and clinical practice
+  across medical disciplines.</p>
+</sec>
+</body>
+<back>
+<ref-list>
+  <title></title>
+  <ref id="ref-beiser2000computing">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Beiser</surname><given-names>Alexa</given-names></name>
+        <name><surname>D’Agostino Sr</surname><given-names>Ralph B</given-names></name>
+        <name><surname>Seshadri</surname><given-names>Sudha</given-names></name>
+        <name><surname>Sullivan</surname><given-names>Lisa M</given-names></name>
+        <name><surname>Wolf</surname><given-names>Philip A</given-names></name>
+      </person-group>
+      <article-title>Computing estimates of incidence, including lifetime risk: Alzheimer’s disease in the framingham study: The practical incidence estimators (PIE) macro</article-title>
+      <source>Statistics in Medicine</source>
+      <publisher-name>Wiley Online Library</publisher-name>
+      <year iso-8601-date="2000">2000</year>
+      <volume>19</volume>
+      <issue>11</issue>
+      <pub-id pub-id-type="doi">10.1002/(SICI)1097-0258(20000615)19:11&lt;1495::AID-SIM441&gt;3.0.CO;2-E</pub-id>
+      <fpage>1495</fpage>
+      <lpage>1522</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-berry2012lifetime">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Berry</surname><given-names>Jarett D</given-names></name>
+        <name><surname>Dyer</surname><given-names>Alan</given-names></name>
+        <name><surname>Cai</surname><given-names>Xuan</given-names></name>
+        <name><surname>Garside</surname><given-names>Daniel B</given-names></name>
+        <name><surname>Ning</surname><given-names>Hongyan</given-names></name>
+        <name><surname>Thomas</surname><given-names>Avis</given-names></name>
+        <name><surname>Greenland</surname><given-names>Philip</given-names></name>
+        <name><surname>Van Horn</surname><given-names>Linda</given-names></name>
+        <name><surname>Tracy</surname><given-names>Russell P</given-names></name>
+        <name><surname>Lloyd-Jones</surname><given-names>Donald M</given-names></name>
+      </person-group>
+      <article-title>Lifetime risks of cardiovascular disease</article-title>
+      <source>New England Journal of Medicine</source>
+      <publisher-name>Mass Medical Soc</publisher-name>
+      <year iso-8601-date="2012">2012</year>
+      <volume>366</volume>
+      <issue>4</issue>
+      <pub-id pub-id-type="doi">10.1056/NEJMoa1012848</pub-id>
+      <fpage>321</fpage>
+      <lpage>329</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-wilkins2012lifetime">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Wilkins</surname><given-names>John T</given-names></name>
+        <name><surname>Ning</surname><given-names>Hongyan</given-names></name>
+        <name><surname>Berry</surname><given-names>Jarett</given-names></name>
+        <name><surname>Zhao</surname><given-names>Lihui</given-names></name>
+        <name><surname>Dyer</surname><given-names>Alan R</given-names></name>
+        <name><surname>Lloyd-Jones</surname><given-names>Donald M</given-names></name>
+      </person-group>
+      <article-title>Lifetime risk and years lived free of total cardiovascular disease</article-title>
+      <source>JAMA</source>
+      <publisher-name>American Medical Association</publisher-name>
+      <year iso-8601-date="2012">2012</year>
+      <volume>308</volume>
+      <issue>17</issue>
+      <pub-id pub-id-type="doi">10.1001/jama.2012.14312</pub-id>
+      <fpage>1795</fpage>
+      <lpage>1801</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-segar2025ecg">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Segar</surname><given-names>Matthew W</given-names></name>
+        <name><surname>Lambeth</surname><given-names>Kaleb</given-names></name>
+        <name><surname>Rosenblatt</surname><given-names>Anna</given-names></name>
+        <name><surname>Razavi</surname><given-names>Mehdi</given-names></name>
+        <name><surname>Pandey</surname><given-names>Ambarish</given-names></name>
+        <name><surname>Saeed</surname><given-names>Mohammad</given-names></name>
+      </person-group>
+      <article-title>Electrocardiographic p-wave parameters and lifetime atrial fibrillation risk: A multicohort study</article-title>
+      <source>Heart Rhythm</source>
+      <publisher-name>Elsevier</publisher-name>
+      <year iso-8601-date="2025">2025</year>
+      <volume></volume>
+      <issue></issue>
+      <pub-id pub-id-type="doi">10.1016/j.hrthm.2025.02.308</pub-id>
+      <fpage></fpage>
+      <lpage></lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-fine1999proportional">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Fine</surname><given-names>Jason P</given-names></name>
+        <name><surname>Gray</surname><given-names>Robert J</given-names></name>
+      </person-group>
+      <article-title>A proportional hazards model for the subdistribution of a competing risk</article-title>
+      <source>Journal of the American Statistical Association</source>
+      <publisher-name>Taylor &amp; Francis</publisher-name>
+      <year iso-8601-date="1999">1999</year>
+      <volume>94</volume>
+      <issue>446</issue>
+      <pub-id pub-id-type="doi">10.1080/01621459.1999.10474144</pub-id>
+      <fpage>496</fpage>
+      <lpage>509</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-lloydJones1999lifetime">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Lloyd-Jones</surname><given-names>Donald M</given-names></name>
+        <name><surname>Larson</surname><given-names>Martin G</given-names></name>
+        <name><surname>Beiser</surname><given-names>Alexa</given-names></name>
+        <name><surname>Levy</surname><given-names>Daniel</given-names></name>
+      </person-group>
+      <article-title>Lifetime risk of developing coronary heart disease</article-title>
+      <source>The Lancet</source>
+      <publisher-name>Elsevier</publisher-name>
+      <year iso-8601-date="1999">1999</year>
+      <volume>353</volume>
+      <issue>9147</issue>
+      <pub-id pub-id-type="doi">10.1016/S0140-6736(98)10279-9</pub-id>
+      <fpage>89</fpage>
+      <lpage>92</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-pandey2018sex">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Pandey</surname><given-names>Ambarish</given-names></name>
+        <name><surname>Omar</surname><given-names>Wael</given-names></name>
+        <name><surname>Ayers</surname><given-names>Colby</given-names></name>
+        <name><surname>LaMonte</surname><given-names>Michael</given-names></name>
+        <name><surname>Klein</surname><given-names>Lewis</given-names></name>
+        <name><surname>Allen</surname><given-names>Norrina B</given-names></name>
+        <name><surname>Kuller</surname><given-names>Lewis H</given-names></name>
+        <name><surname>Greenland</surname><given-names>Philip</given-names></name>
+        <name><surname>Eaton</surname><given-names>Charles B</given-names></name>
+        <name><surname>Gottdiener</surname><given-names>John S</given-names></name>
+        <name><surname>others</surname></name>
+      </person-group>
+      <article-title>Sex and race differences in lifetime risk of heart failure with preserved ejection fraction and heart failure with reduced ejection fraction</article-title>
+      <source>Circulation</source>
+      <publisher-name>Am Heart Assoc</publisher-name>
+      <year iso-8601-date="2018">2018</year>
+      <volume>137</volume>
+      <issue>17</issue>
+      <pub-id pub-id-type="doi">10.1161/CIRCULATIONAHA.117.031622</pub-id>
+      <fpage>1814</fpage>
+      <lpage>1823</lpage>
+    </element-citation>
+  </ref>
+</ref-list>
+</back>
+</article>

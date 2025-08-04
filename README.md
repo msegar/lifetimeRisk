@@ -1,4 +1,6 @@
 # lifetimeRisk
+[![status](https://joss.theoj.org/papers/fef2f1364107efeeef96588c73c3b059/status.svg)](https://joss.theoj.org/papers/fef2f1364107efeeef96588c73c3b059)
+
 <div>
 <img src="lifetime_risk_sticker.png" width="150px" align="right">
 </div>

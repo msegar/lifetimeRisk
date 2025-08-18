@@ -7,17 +7,24 @@
 create_person_year_data(data, min_age, max_age, debug = FALSE)
 }
 \arguments{
-\item{data}{Input dataset}
+\item{data}{Input dataset (data.frame or data.table) with columns: ids, entryage, survage, status, astatus, group}
 
 \item{min_age}{Minimum age to consider}
 
 \item{max_age}{Maximum age to consider}
 
-\item{debug}{If TRUE, save intermediate datasets}
+\item{debug}{If TRUE, save intermediate datasets to global environment (for debugging)}
 }
 \value{
-A data.table with expanded person-year data
+A data.table with columns: ids, age, status, astatus, weight, group
 }
 \description{
-Create person-year dataset for analysis
+Expands input data to a person-year format, with one row per person-year at risk.
+}
+\details{
+For each individual, creates rows for each year at risk between entryage and survage (capped at max_age).
+Handles partial years and sets weights/status according to SAS PIE macro logic.
+}
+\examples{
+create_person_year_data(test_data, 50, 80)
 }

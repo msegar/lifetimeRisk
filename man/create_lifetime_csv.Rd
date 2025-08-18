@@ -7,44 +7,22 @@
 create_lifetime_csv(..., adjusted = TRUE, output_file = "analysis_output.csv")
 }
 \arguments{
-\item{...}{One or more analysis objects, each containing cumulative incidence estimates
-for two groups. Each object must be a list of length 3 with the required structure
-containing adjusted and unadjusted estimates.}
+\item{...}{One or more analysis objects (from pie_analysis)}
 
-\item{adjusted}{Logical indicating whether to use adjusted estimates (TRUE) or
-unadjusted estimates (FALSE). Default is TRUE.}
+\item{adjusted}{Logical indicating whether to use adjusted estimates (TRUE) or unadjusted (FALSE). Default is TRUE.}
 
-\item{output_file}{Character string specifying the path and name of the output CSV file.
-Default is "analysis_output.csv".}
+\item{output_file}{Path and name of the output CSV file. Default is "analysis_output.csv".}
 }
 \value{
-Invisibly returns a data frame containing the combined estimates. The data frame
-is also written to a CSV file at the specified location.
+Invisibly returns a data frame containing the combined estimates.
 }
 \description{
-Creates a CSV file containing lifetime risk estimates from one or more analysis objects.
-Each analysis object contributes two columns of estimates (one for each group), with
-age-specific estimates arranged in rows.
+Exports lifetime risk estimates for one or more analysis objects to a CSV file.
 }
 \details{
-The function processes each analysis object and extracts either the adjusted or
-unadjusted lifetime risk estimates for both groups. For a single object, the output
-will contain columns: age, group1, group2. For multiple objects, columns will be
-named with object suffixes: age, group1_obj1, group2_obj1, group1_obj2, group2_obj2, etc.
+Each analysis object contributes two columns (one per group). For multiple objects, columns are suffixed.
 }
 \examples{
-\dontrun{
-# Single analysis object
-create_lifetime_csv(analysis1)
-
-# Multiple analysis objects
-create_lifetime_csv(analysis1, analysis2,
-                   output_file = "combined_lifetime.csv")
-
-# Using unadjusted estimates
-create_lifetime_csv(analysis1, analysis2,
-                   adjusted = FALSE,
-                   output_file = "unadjusted_lifetime.csv")
-}
-
+result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
+create_lifetime_csv(result, adjusted = TRUE, output_file = tempfile())
 }

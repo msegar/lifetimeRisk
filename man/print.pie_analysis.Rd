@@ -12,5 +12,5 @@
 \item{...}{Additional arguments (not used)}
 }
 \description{
-Print method for pie_analysis objects
+Prints a summary of analysis parameters. Use summary() for detailed results.
 }

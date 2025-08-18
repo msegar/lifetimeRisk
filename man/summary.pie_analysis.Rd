@@ -12,5 +12,5 @@
 \item{...}{Additional arguments (not used)}
 }
 \description{
-Summary method for pie_analysis objects
+Prints a detailed summary of results for each group, including final cumulative incidence and confidence intervals.
 }

@@ -15,17 +15,24 @@ create_summary_dataset(
 \arguments{
 \item{data}{Person-year dataset}
 
-\item{group_var}{Group variable name}
+\item{group_var}{Group variable name (string)}
 
-\item{level}{Group level(s)}
+\item{level}{Group level(s) to include}
 
 \item{dataset_name}{Name to save dataset as when debugging}
 
-\item{debug}{If TRUE, save intermediate datasets}
+\item{debug}{If TRUE, save summary dataset to global environment}
 }
 \value{
-A data.table with summary statistics
+A data.table with columns: age, R (at risk), E (events), C (competing), W (weight)
 }
 \description{
-Create summary dataset (equivalent to SDSMAC)
+Summarizes person-year data by age and group, including total and 90+ rows.
+}
+\details{
+Produces summary statistics by age, with special rows for age 90+ and total (age=999).
+}
+\examples{
+py <- create_person_year_data(test_data, 50, 80)
+create_summary_dataset(py, group_var = "group", level = "A")
 }

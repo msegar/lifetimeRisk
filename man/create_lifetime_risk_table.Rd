@@ -21,17 +21,23 @@ create_lifetime_risk_table(
 
 \item{max_age}{Maximum age to consider}
 
-\item{group_var}{Group variable name}
+\item{group_var}{Group variable name (optional)}
+
+\item{group_levels}{Vector of group levels to include (optional)}
 
 \item{adjusted}{Logical, whether to use competing risk adjusted estimates}
 
 \item{age_group_width}{Width of age groups (default = 5)}
-
-\item{group_levels}{Vector of group levels to include}
 }
 \value{
-A data frame containing lifetime risks from different starting ages
+A data.frame with lifetime risk estimates for each group and starting age
 }
 \description{
-Create Lifetime Risk Table from Different Starting Ages
+Summarizes lifetime risk estimates for multiple starting ages and groups.
+}
+\details{
+For each group and starting age, runs the full analysis and extracts the final cumulative incidence (estimate and 95\% CI).
+}
+\examples{
+create_lifetime_risk_table(test_data, index_ages = c(50, 60), max_age = 80, group_var = "group")
 }

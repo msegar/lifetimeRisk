@@ -11,11 +11,19 @@ calculate_cumulative_incidence(data, age_free, debug = FALSE)
 
 \item{age_free}{Starting age for analysis}
 
-\item{debug}{If TRUE, save intermediate datasets}
+\item{debug}{If TRUE, save intermediate datasets to global environment}
 }
 \value{
-A list containing unadjusted and adjusted cumulative incidence
+A list with two data.frames: unadjusted and adjusted cumulative incidence (columns: age, est, lcl, ucl)
 }
 \description{
-Calculate cumulative incidence with intermediate datasets
+Computes cumulative incidence and confidence intervals, with and without competing risk adjustment.
+}
+\details{
+Follows the SAS PIE macro algorithm for cumulative incidence and standard error calculation.
+Returns both unadjusted and competing risk-adjusted estimates.
+}
+\examples{
+py <- create_person_year_data(test_data, 50, 80)
+calculate_cumulative_incidence(py, 50)
 }

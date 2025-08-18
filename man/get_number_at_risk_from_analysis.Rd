@@ -24,5 +24,11 @@ get_number_at_risk_from_analysis(
 A dataframe with number at risk by group and age
 }
 \description{
-Extract Number at Risk from Lifetable Analysis
+Extracts the number at risk at specified ages for each group from a pie_analysis result.
+}
+\details{
+Requires that pie_analysis was run with debug=TRUE and that summary datasets (SDS1, SDS2) are available in the global environment.
+}
+\examples{
+# Only works if SDS1 and SDS2 exist in global environment
 }

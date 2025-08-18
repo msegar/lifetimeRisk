@@ -7,15 +7,24 @@
 calculate_age_specific_rates(data, age_group_width, min_age)
 }
 \arguments{
-\item{data}{Person-year dataset}
+\item{data}{Person-year dataset (data.frame or data.table) with columns: age, status, weight}
 
-\item{age_group_width}{Width of age groups}
+\item{age_group_width}{Width of age groups (e.g., 5 for 5-year intervals)}
 
-\item{min_age}{Minimum age to consider}
+\item{min_age}{Minimum age to consider (start of first group)}
 }
 \value{
-A data.table with age-specific rates
+A data.table with columns: age_min, age_max, events, person_years, rate
 }
 \description{
-Calculate Age-Specific Incidence Rates
+Computes age-specific incidence rates from a person-year dataset, grouping ages into intervals.
+}
+\details{
+The function groups ages into intervals of width \code{age_group_width} starting at \code{min_age},
+and calculates the number of events, person-years, and incidence rate per 1000 person-years for each group.
+A total row is added (age_group = 88) summarizing all ages.
+}
+\examples{
+py <- create_person_year_data(test_data, 50, 80)
+calculate_age_specific_rates(py, 5, 50)
 }

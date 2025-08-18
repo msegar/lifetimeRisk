@@ -18,35 +18,38 @@ pie_analysis(
 )
 }
 \arguments{
-\item{data}{A data frame containing the input data. It should have the following columns:
-\itemize{
-\item ids: Unique identifier for each individual
-\item entryage: Age at which the individual entered the study
-\item survage: Age at which the individual was last observed (due to event occurrence or end of follow-up)
-\item status: Indicator for the primary event of interest (1 if occurred, 0 if not)
-\item astatus: Indicator for a competing event (1 if occurred, 0 if not)
-}}
+\item{data}{A data frame containing the input data. Must include: ids, entryage, survage, status, astatus, and optionally grouping variables.}
 
 \item{min_age}{Minimum age to consider}
 
 \item{max_age}{Maximum age to consider}
 
-\item{age_group_width}{Width of age groups}
+\item{age_group_width}{Width of age groups (e.g., 5 for 5-year intervals)}
 
-\item{group_var}{Name of grouping variable (optional, NULL for overall analysis)}
+\item{group_var}{Name of grouping variable (string, optional, NULL for overall analysis)}
 
-\item{group_levels}{Vector of group levels (replaces group1/group2)}
+\item{group_levels}{Vector of group levels to analyze (NULL to auto-detect all levels)}
 
 \item{age_free}{Starting age for survival analysis}
 
-\item{output1}{Optional output parameter (not documented in detail)}
-\item{output2}{Optional output parameter (not documented in detail)}
-
-\item{debug}{If TRUE, save intermediate datasets}
+\item{debug}{If TRUE, save intermediate datasets to global environment}
 }
 \value{
-A list containing all analysis results
+An S3 object of class 'pie_analysis' containing:
+\itemize{
+\item age_specific_rates: list of data.tables by group
+\item cumulative_incidence: list of data.frames by group
+\item summary_datasets: list of summary tables by group
+\item parameters: list of analysis parameters
+}
 }
 \description{
-Main Analysis Function
+Performs person-year and lifetime risk analysis, including age-specific rates and cumulative incidence, for the overall population or by group.
+}
+\details{
+This function implements the full PIE macro workflow, including person-year expansion, age-specific rates, and cumulative incidence with and without competing risk adjustment. Handles any number of groups.
+}
+\examples{
+result <- pie_analysis(test_data, min_age = 50, max_age = 80, age_group_width = 5, group_var = "group", age_free = 50)
+summary(result)
 }

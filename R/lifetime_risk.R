@@ -57,6 +57,7 @@ calculate_age_specific_rates <- function(data, age_group_width, min_age) {
 #' @details
 #' For each individual, creates rows for each year at risk between entryage and survage (capped at max_age).
 #' Handles partial years and sets weights/status according to SAS PIE macro logic.
+#' Ages are converted to integers to ensure consistent data types throughout the function.
 #' @examples
 #' create_person_year_data(test_data, 50, 80)
 #' @export
@@ -73,11 +74,11 @@ create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
     return(dt[0, .(ids = integer(), age = integer(), status = integer(), astatus = integer(), weight = numeric(), group = character())])
   }
 
-  # Handle max age exactly as SAS does
+  # Handle max age exactly as SAS does and convert to integers
   dt[, `:=`(
     full = ifelse(survage > max_age, 1, 0),
-    survage = pmin(floor(survage), max_age),
-    start = pmax(entryage, min_age)
+    survage = as.integer(pmin(floor(survage), max_age)),
+    start = as.integer(pmax(entryage, min_age))
   )]
 
   # Set status and weight according to SAS rules
@@ -107,7 +108,7 @@ create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
   intermediate_records <- dt[survage > start, {
     ages <- seq(start, survage - 1)
     .(
-      age = ages,
+      age = as.integer(ages),
       status = 0L,
       astatus = 0L,
       weight = 1.0,

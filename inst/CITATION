@@ -1,0 +1,18 @@
+citHeader("To cite lifetimeRisk in publications use:")
+
+citEntry(
+  entry    = "Manual",
+  title    = "lifetimeRisk: R package to calculate lifetime risk of adverse outcomes",
+  author   = person("Matthew", "Segar", middle = "W"),
+  year     = "2025",
+  url      = "https://github.com/msegar/lifetimeRisk",
+  doi      = "10.5281/zenodo.17117439",
+  note     = "R package version 0.1.0",
+  
+  textVersion = paste(
+    "Segar, MW. (2025).",
+    "lifetimeRisk: R package to calculate lifetime risk of adverse outcomes.",
+    "R package version 0.1.0.",
+    "https://doi.org/10.5281/zenodo.17117439"
+  )
+)

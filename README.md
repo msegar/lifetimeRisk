@@ -1,5 +1,5 @@
 # lifetimeRisk
-[![DOI](https://zenodo.org/badge/833209394.svg)](https://doi.org/10.5281/zenodo.17117438)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17117439.svg)](https://doi.org/10.5281/zenodo.17117439)
 
 <div>
 <img src="lifetime_risk_sticker.png" width="150px" align="right">
@@ -187,9 +187,11 @@ devtools::test()
 - For detailed examples, see the vignettes and test files.
 
 ## Citation
-If you use this package, please cite:
-- Lloyd-Jones DM, Martin DO, Larson MG, Levy D. Lifetime risk of developing coronary heart disease. Lancet. 1999;353(9147):89-92.
-- Beiser A, D'Agostino RB Sr, Seshadri S, Sullivan LM, Wolf PA. Computing estimates of incidence, including lifetime risk: Alzheimer's disease in the Framingham Study. The Practical Incidence Estimators (PIE) macro. Stat Med. 2000 Jun;19(11-12):1495-522. [PubMed PMID: 10844714](https://pubmed.ncbi.nlm.nih.gov/10844714/)
+## How to Cite
+If you use lifetimeRisk in your research, please cite:
+
+Segar, MW. (2025). lifetimeRisk: R package to calculate lifetime risk of adverse outcomes [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.17117439
+
 
 ## License
 See LICENSE file for details.

@@ -80,7 +80,7 @@ plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55),
                               colors = c("red", "blue"))
 
 # With log transformation and smoothing (good for biomarkers like NTproBNP)
-plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55), 
+plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55),
                               log_transform = TRUE, xlim = c(10, 1000), smooth_line = TRUE)
 
 # Clean smooth line without points

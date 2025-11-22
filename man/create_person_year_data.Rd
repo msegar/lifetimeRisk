@@ -24,6 +24,7 @@ Expands input data to a person-year format, with one row per person-year at risk
 \details{
 For each individual, creates rows for each year at risk between entryage and survage (capped at max_age).
 Handles partial years and sets weights/status according to SAS PIE macro logic.
+Ages are converted to integers to ensure consistent data types throughout the function.
 }
 \examples{
 create_person_year_data(test_data, 50, 80)

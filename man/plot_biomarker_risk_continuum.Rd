@@ -18,7 +18,9 @@ plot_biomarker_risk_continuum(
   smooth_line = FALSE,
   show_points = TRUE,
   colors = NULL,
-  age_labels = NULL
+  age_labels = NULL,
+  strata = NULL,
+  strata_labels = NULL
 )
 }
 \arguments{
@@ -46,9 +48,14 @@ plot_biomarker_risk_continuum(
 
 \item{show_points}{Logical; show individual data points (default: TRUE)}
 
-\item{colors}{Vector of colors for different target ages (optional, defaults to rainbow colors)}
+\item{colors}{Vector of colors for different target ages or strata levels (optional, defaults to rainbow colors)}
 
 \item{age_labels}{Named vector for age labels in legend, e.g. c("45"="Age 45", "55"="Age 55") (optional)}
+
+\item{strata}{Character; name of column in data to stratify by (e.g., "Sex"). When provided,
+separate lines are plotted for each stratum level using different colors.}
+
+\item{strata_labels}{Named vector for strata labels in legend, e.g. c("M"="Male", "F"="Female") (optional)}
 }
 \value{
 A ggplot object showing biomarker values vs lifetime risk
@@ -86,4 +93,17 @@ plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55),
 # Clean smooth line without points
 plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55),
                               smooth_line = TRUE, show_points = FALSE)
+
+# Stratified by Sex
+plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50,
+                              strata = "sex")
+
+# Stratified by Sex with custom labels
+plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50,
+                              strata = "sex",
+                              strata_labels = c("M"="Male", "F"="Female"))
+
+# Stratified by Sex with multiple ages (color=strata, linetype=age)
+plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55),
+                              strata = "sex")
 }

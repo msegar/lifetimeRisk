@@ -2,9 +2,13 @@
 % Please edit documentation in R/biomarker_plots.R
 \name{find_inflection}
 \alias{find_inflection}
-\title{Find Inflection Point in Biomarker-Risk Relationship}
+\title{Find Inflection Point or Maximum Curvature in Biomarker-Risk Relationship}
 \usage{
-find_inflection(risk_data, log_transform = FALSE)
+find_inflection(
+  risk_data,
+  log_transform = FALSE,
+  method = c("max_curvature", "knee", "inflection", "segmented2", "segmented3")
+)
 }
 \arguments{
 \item{risk_data}{A data frame containing biomarker-risk data with the following columns:
@@ -18,80 +22,105 @@ by extracting the \code{$data} element from the returned ggplot object.}
 \item{log_transform}{Logical; if \code{TRUE}, applies log10 transformation to biomarker
 values before analysis. Recommended for biomarkers with wide ranges or log-normal
 distributions (e.g., NTproBNP, troponin). Default is \code{FALSE}.}
+
+\item{method}{Character; the method for finding the transition point. Options are:
+\itemize{
+\item \code{"max_curvature"} (default) - Finds the point where the curve is bending
+most sharply (maximum absolute second derivative).
+\item \code{"knee"} - Finds where the curve transitions from flat to steep by
+identifying where the slope first reaches 25\\% of its maximum value. This is
+designed for biomarker-risk curves that start flat and become steep.
+\item \code{"inflection"} - Finds the true mathematical inflection point where the
+curve changes from concave up to concave down (second derivative crosses zero).
+\item \code{"segmented2"} - Piecewise linear regression with 2 segments (1 breakpoint)
+using the \code{segmented} package. Returns the breakpoint with confidence intervals
+via the Davies test. Best for identifying a single transition point.
+\item \code{"segmented3"} - Piecewise linear regression with 3 segments (2 breakpoints)
+using the \code{segmented} package. Returns the first breakpoint (transition from
+flat to steep) with confidence intervals. Best for curves with three regimes
+(flat → steep → plateau). The threshold at which risk accelerated was identified using
+three-segment piecewise linear regression applied to the log₁₀-transformed biomarker values,
+with the first breakpoint defining the transition from a low-gradient to a high-gradient
+region of the biomarker–risk continuum.
+}}
 }
 \value{
-A list with two elements:
+A list with the following elements:
 \describe{
-\item{inflection_point}{Numeric value indicating the biomarker level at which
-the rate of risk increase changes most dramatically (in original biomarker units)}
-\item{model}{The fitted \code{smooth.spline} object, which can be used for
-further analysis or plotting}
+\item{point}{Numeric value indicating the biomarker level at the identified
+transition point (in original biomarker units). For \code{"segmented3"}, this
+is the first breakpoint.}
+\item{method}{Character string indicating which method was used}
+\item{model}{The fitted model object: a \code{smooth.spline} object for spline-based
+methods, or a \code{segmented} object for segmented regression methods}
+\item{breakpoints}{(Segmented methods only) Named numeric vector of all breakpoint
+estimates in original biomarker units}
+\item{ci}{(Segmented methods only) Matrix of breakpoint confidence intervals
+in original biomarker units, with columns \code{Est.}, \code{CI.low}, \code{CI.up}}
+\item{slopes}{(Segmented methods only) Named numeric vector of slopes for each segment}
 }
 }
 \description{
-Identifies the inflection point in a biomarker-risk continuum by fitting a smoothing spline
-and finding the point of maximum absolute curvature (second derivative).
+Identifies key transition points in a biomarker-risk continuum by fitting a smoothing spline
+and finding either the point of maximum curvature or the true inflection point.
 }
 \details{
-The function identifies inflection points using the following approach:
+The function identifies transition points using the following approach:
 \enumerate{
 \item Optionally log-transforms the biomarker values
-\item Fits a smoothing spline with 6 degrees of freedom
-\item Calculates the second derivative numerically across 200 points
-\item Identifies the point of maximum absolute curvature
+\item Fits the selected model
+\item Identifies the transition point(s)
 \item Back-transforms to original biomarker scale if needed
 }
 
-This method is particularly useful for identifying clinical thresholds where biomarker-risk
-relationships transition from gradual to steep increases, which may have implications for
-risk stratification and treatment decisions.
+\strong{Choosing a method:}
+\itemize{
+\item \code{"max_curvature"} (default) finds where the curve is bending most sharply.
+\item \code{"knee"} finds where the slope first becomes substantial (25\\% of max),
+identifying where the flat region ends and the steep increase begins.
+\item \code{"inflection"} finds the mathematical point where concavity changes. Returns
+\code{NA} if no inflection point exists.
+\item \code{"segmented2"} fits a two-segment (hockey-stick) piecewise linear model.
+Most commonly used in biomedical literature. Provides CIs on the breakpoint.
+\item \code{"segmented3"} fits a three-segment piecewise linear model. Useful when
+the relationship has three distinct phases (e.g., flat baseline, steep rise,
+plateau). The first breakpoint typically captures the "takeoff" point.
+}
 }
 \examples{
-# Example 1: Basic usage with NTproBNP data
-# First, generate risk data from plot_biomarker_risk_continuum
+# Example 1: Find max curvature point (default)
 p1 <- plot_biomarker_risk_continuum(
   data = my_data,
   biomarker_col = "ntprobnp",
   target_age = 55,
-  max_age = 90,
   n_bins = 40,
-  log_transform = TRUE,
-  smooth_line = TRUE
+  log_transform = TRUE
 )
 
-# Extract the plotted data
-risk_data <- p1$data
+result <- find_inflection(p1$data, log_transform = TRUE)
+print(paste("Max curvature at:", round(result$point, 1), "pg/mL"))
 
-# Find inflection point
-result <- find_inflection(risk_data, log_transform = TRUE)
-print(paste("Inflection at:", round(result$inflection_point, 1), "pg/mL"))
-
-# Add inflection line to plot
-p1 + geom_vline(xintercept = result$inflection_point,
+# Add vertical line to plot
+p1 + geom_vline(xintercept = result$point,
                 linetype = "dashed", color = "red", linewidth = 1)
 
-# Example 2: Without log transformation (for normally distributed biomarkers)
-p2 <- plot_biomarker_risk_continuum(
-  data = my_data,
-  biomarker_col = "cholesterol",
-  target_age = 50,
-  n_bins = 30
-)
+# Example 2: Segmented regression with 2 segments
+seg2 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented2")
+print(paste("Breakpoint:", round(seg2$point, 1)))
+print(seg2$ci)       # confidence intervals
+print(seg2$slopes)   # slopes per segment
 
-result2 <- find_inflection(p2$data, log_transform = FALSE)
-print(result2$inflection_point)
+# Example 3: Segmented regression with 3 segments
+seg3 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented3")
+print(paste("First breakpoint (takeoff):", round(seg3$point, 1)))
+print(paste("All breakpoints:", paste(round(seg3$breakpoints, 1), collapse = ", ")))
 
-# Example 3: Compare inflection points across age groups
-ages <- c(45, 55, 65, 75)
-inflections <- sapply(ages, function(age) {
-  p <- plot_biomarker_risk_continuum(my_data, "ntprobnp",
-                                     target_age = age, n_bins = 40,
-                                     log_transform = TRUE)
-  result <- find_inflection(p$data, log_transform = TRUE)
-  result$inflection_point
+# Example 4: Compare all methods
+methods <- c("max_curvature", "knee", "inflection", "segmented2", "segmented3")
+results <- lapply(methods, function(m) {
+  find_inflection(p1$data, log_transform = TRUE, method = m)
 })
-names(inflections) <- paste0("Age_", ages)
-print(inflections)
+sapply(results, function(r) round(r$point, 1))
 
 }
 \seealso{

@@ -7,7 +7,9 @@
 find_inflection(
   risk_data,
   log_transform = FALSE,
-  method = c("max_curvature", "knee", "inflection", "segmented2", "segmented3")
+  method = c("max_curvature", "knee", "inflection", "interaction", "segmented2",
+    "segmented3"),
+  alpha = 0.05
 )
 }
 \arguments{
@@ -32,17 +34,23 @@ identifying where the slope first reaches 25\\% of its maximum value. This is
 designed for biomarker-risk curves that start flat and become steep.
 \item \code{"inflection"} - Finds the true mathematical inflection point where the
 curve changes from concave up to concave down (second derivative crosses zero).
+\item \code{"interaction"} - Sequential interaction-based threshold search. At each
+candidate cutpoint, the data are dichotomized and a linear model with a
+group × biomarker interaction term is fit. The first cutpoint (scanning low to high)
+where the interaction p-value is significant identifies where the dose–response
+slope significantly steepens. Analogous to a scan statistic for slope change
+(cf. Davies, 1987). Returns all tested cutpoints and p-values.
 \item \code{"segmented2"} - Piecewise linear regression with 2 segments (1 breakpoint)
 using the \code{segmented} package. Returns the breakpoint with confidence intervals
 via the Davies test. Best for identifying a single transition point.
 \item \code{"segmented3"} - Piecewise linear regression with 3 segments (2 breakpoints)
 using the \code{segmented} package. Returns the first breakpoint (transition from
 flat to steep) with confidence intervals. Best for curves with three regimes
-(flat → steep → plateau). The threshold at which risk accelerated was identified using
-three-segment piecewise linear regression applied to the log₁₀-transformed biomarker values,
-with the first breakpoint defining the transition from a low-gradient to a high-gradient
-region of the biomarker–risk continuum.
+(flat → steep → plateau).
 }}
+
+\item{alpha}{Numeric; significance threshold for the interaction p-value when using
+\code{method = "interaction"}. Default is \code{0.05}. Ignored for other methods.}
 }
 \value{
 A list with the following elements:
@@ -58,6 +66,9 @@ estimates in original biomarker units}
 \item{ci}{(Segmented methods only) Matrix of breakpoint confidence intervals
 in original biomarker units, with columns \code{Est.}, \code{CI.low}, \code{CI.up}}
 \item{slopes}{(Segmented methods only) Named numeric vector of slopes for each segment}
+\item{scan_results}{(\code{"interaction"} method only) Data frame with columns
+\code{cutpoint} (original biomarker units), \code{p_interaction}, and
+\code{significant} (logical)}
 }
 }
 \description{
@@ -80,11 +91,15 @@ The function identifies transition points using the following approach:
 identifying where the flat region ends and the steep increase begins.
 \item \code{"inflection"} finds the mathematical point where concavity changes. Returns
 \code{NA} if no inflection point exists.
+\item \code{"interaction"} scans candidate cutpoints and tests for a significant
+group × biomarker interaction, identifying where the slope first significantly
+steepens. Clinically intuitive and easy to explain; analogous to a Davies test.
 \item \code{"segmented2"} fits a two-segment (hockey-stick) piecewise linear model.
 Most commonly used in biomedical literature. Provides CIs on the breakpoint.
-\item \code{"segmented3"} fits a three-segment piecewise linear model. Useful when
-the relationship has three distinct phases (e.g., flat baseline, steep rise,
-plateau). The first breakpoint typically captures the "takeoff" point.
+\item \code{"segmented3"} The threshold at which risk accelerated was identified using
+three-segment piecewise linear regression applied to the log₁₀-transformed biomarker values,
+with the first breakpoint defining the transition from a low-gradient to a high-gradient
+region of the biomarker–risk continuum.
 }
 }
 \examples{
@@ -115,8 +130,14 @@ seg3 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented3")
 print(paste("First breakpoint (takeoff):", round(seg3$point, 1)))
 print(paste("All breakpoints:", paste(round(seg3$breakpoints, 1), collapse = ", ")))
 
-# Example 4: Compare all methods
-methods <- c("max_curvature", "knee", "inflection", "segmented2", "segmented3")
+# Example 4: Interaction-based threshold search
+intxn <- find_inflection(p1$data, log_transform = TRUE, method = "interaction")
+print(paste("First significant slope change at:", round(intxn$point, 1)))
+print(intxn$scan_results)  # full scan table
+
+# Example 5: Compare all methods
+methods <- c("max_curvature", "knee", "inflection", "interaction",
+             "segmented2", "segmented3")
 results <- lapply(methods, function(m) {
   find_inflection(p1$data, log_transform = TRUE, method = m)
 })

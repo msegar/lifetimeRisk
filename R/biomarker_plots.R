@@ -462,6 +462,8 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
 #' @param log_transform Logical; if \code{TRUE}, applies log10 transformation to biomarker
 #'   values before analysis. Recommended for biomarkers with wide ranges or log-normal
 #'   distributions (e.g., NTproBNP, troponin). Default is \code{FALSE}.
+#' @param alpha Numeric; significance threshold for the interaction p-value when using
+#'   \code{method = "interaction"}. Default is \code{0.05}. Ignored for other methods.
 #' @param method Character; the method for finding the transition point. Options are:
 #'   \itemize{
 #'     \item \code{"max_curvature"} (default) - Finds the point where the curve is bending
@@ -471,16 +473,19 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
 #'       designed for biomarker-risk curves that start flat and become steep.
 #'     \item \code{"inflection"} - Finds the true mathematical inflection point where the
 #'       curve changes from concave up to concave down (second derivative crosses zero).
+#'     \item \code{"interaction"} - Sequential interaction-based threshold search. At each
+#'       candidate cutpoint, the data are dichotomized and a linear model with a
+#'       group × biomarker interaction term is fit. The first cutpoint (scanning low to high)
+#'       where the interaction p-value is significant identifies where the dose–response
+#'       slope significantly steepens. Analogous to a scan statistic for slope change
+#'       (cf. Davies, 1987). Returns all tested cutpoints and p-values.
 #'     \item \code{"segmented2"} - Piecewise linear regression with 2 segments (1 breakpoint)
 #'       using the \code{segmented} package. Returns the breakpoint with confidence intervals
 #'       via the Davies test. Best for identifying a single transition point.
 #'     \item \code{"segmented3"} - Piecewise linear regression with 3 segments (2 breakpoints)
 #'       using the \code{segmented} package. Returns the first breakpoint (transition from
 #'       flat to steep) with confidence intervals. Best for curves with three regimes
-#'       (flat → steep → plateau). The threshold at which risk accelerated was identified using
-#'       three-segment piecewise linear regression applied to the log₁₀-transformed biomarker values,
-#'       with the first breakpoint defining the transition from a low-gradient to a high-gradient
-#'       region of the biomarker–risk continuum.
+#'       (flat → steep → plateau).
 #'   }
 #'
 #' @return A list with the following elements:
@@ -496,6 +501,9 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
 #'     \item{ci}{(Segmented methods only) Matrix of breakpoint confidence intervals
 #'       in original biomarker units, with columns \code{Est.}, \code{CI.low}, \code{CI.up}}
 #'     \item{slopes}{(Segmented methods only) Named numeric vector of slopes for each segment}
+#'     \item{scan_results}{(\code{"interaction"} method only) Data frame with columns
+#'       \code{cutpoint} (original biomarker units), \code{p_interaction}, and
+#'       \code{significant} (logical)}
 #'   }
 #'
 #' @details
@@ -514,11 +522,18 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
 #'     identifying where the flat region ends and the steep increase begins.
 #'   \item \code{"inflection"} finds the mathematical point where concavity changes. Returns
 #'     \code{NA} if no inflection point exists.
+#'   \item \code{"interaction"} scans candidate cutpoints and tests for a significant
+#'     group × biomarker interaction, identifying where the slope first significantly
+#'     steepens. Clinically intuitive and easy to explain; analogous to a Davies test (1987). At each candidate cutpoint,
+#'     participants were dichotomized and a linear model with a group × biomarker interaction term was fit; the lowest
+#'     biomarker value yielding a significant interaction (p < 0.05) was taken as the threshold, indicating the point
+#'     above which the dose–response relationship significantly steepens.
 #'   \item \code{"segmented2"} fits a two-segment (hockey-stick) piecewise linear model.
 #'     Most commonly used in biomedical literature. Provides CIs on the breakpoint.
-#'   \item \code{"segmented3"} fits a three-segment piecewise linear model. Useful when
-#'     the relationship has three distinct phases (e.g., flat baseline, steep rise,
-#'     plateau). The first breakpoint typically captures the "takeoff" point.
+#'   \item \code{"segmented3"} The threshold at which risk accelerated was identified using
+#'       three-segment piecewise linear regression applied to the log₁₀-transformed biomarker values,
+#'       with the first breakpoint defining the transition from a low-gradient to a high-gradient
+#'       region of the biomarker–risk continuum.
 #' }
 #'
 #' @examples
@@ -549,8 +564,14 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
 #' print(paste("First breakpoint (takeoff):", round(seg3$point, 1)))
 #' print(paste("All breakpoints:", paste(round(seg3$breakpoints, 1), collapse = ", ")))
 #'
-#' # Example 4: Compare all methods
-#' methods <- c("max_curvature", "knee", "inflection", "segmented2", "segmented3")
+#' # Example 4: Interaction-based threshold search
+#' intxn <- find_inflection(p1$data, log_transform = TRUE, method = "interaction")
+#' print(paste("First significant slope change at:", round(intxn$point, 1)))
+#' print(intxn$scan_results)  # full scan table
+#'
+#' # Example 5: Compare all methods
+#' methods <- c("max_curvature", "knee", "inflection", "interaction",
+#'              "segmented2", "segmented3")
 #' results <- lapply(methods, function(m) {
 #'   find_inflection(p1$data, log_transform = TRUE, method = m)
 #' })
@@ -562,7 +583,8 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
 #' @export
 find_inflection <- function(risk_data, log_transform = FALSE,
                             method = c("max_curvature", "knee", "inflection",
-                                       "segmented2", "segmented3")) {
+                                       "interaction", "segmented2", "segmented3"),
+                            alpha = 0.05) {
 
   method <- match.arg(method)
 
@@ -589,6 +611,59 @@ find_inflection <- function(risk_data, log_transform = FALSE,
     x <- risk_data$biomarker_midpoint
   }
   y <- risk_data$risk_estimate
+
+  # ---- Interaction-based threshold search ----
+  if (method == "interaction") {
+
+    n <- length(x)
+    # Require at least 5 observations on each side
+    min_edge <- 5
+    candidate_idx <- seq(min_edge, n - min_edge)
+
+    scan_df <- data.frame(
+      index = candidate_idx,
+      cutpoint_transformed = x[candidate_idx],
+      cutpoint = risk_data$biomarker_midpoint[candidate_idx],
+      p_interaction = NA_real_
+    )
+
+    for (i in seq_along(candidate_idx)) {
+      ci <- candidate_idx[i]
+      group <- ifelse(x < x[ci], 0, 1)
+      tmp_data <- data.frame(y_var = y, x_var = x, group = factor(group))
+      fit_intxn <- lm(y_var ~ group * x_var, data = tmp_data)
+
+      # Extract interaction p-value (group:x_var term)
+      coef_table <- summary(fit_intxn)$coefficients
+      intxn_row <- grep("group1:x_var", rownames(coef_table))
+      if (length(intxn_row) == 1) {
+        scan_df$p_interaction[i] <- coef_table[intxn_row, "Pr(>|t|)"]
+      }
+    }
+
+    scan_df$significant <- scan_df$p_interaction < alpha
+
+    # Find first significant cutpoint (scanning low to high)
+    first_sig <- which(scan_df$significant)[1]
+
+    if (is.na(first_sig)) {
+      point <- NA_real_
+      warning("No cutpoint with significant interaction p-value < ", alpha)
+    } else {
+      point <- scan_df$cutpoint[first_sig]
+    }
+
+    # Clean up output
+    scan_out <- scan_df[, c("cutpoint", "p_interaction", "significant")]
+
+    return(list(
+      point = point,
+      method = method,
+      model = NULL,
+      scan_results = scan_out,
+      alpha = alpha
+    ))
+  }
 
   # ---- Segmented regression methods ----
   if (method %in% c("segmented2", "segmented3")) {

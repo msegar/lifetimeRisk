@@ -1,7 +1,5 @@
 # tests/testthat/test-pie-simple.R
 
-library(testthat)
-
 test_that("pie_analysis works with no grouping", {
   data <- data.frame(
     ids = 1:100,

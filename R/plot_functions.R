@@ -1,14 +1,11 @@
 #' @importFrom ggplot2 ggplot aes geom_ribbon geom_line labs theme_minimal theme
 #' @importFrom ggplot2 element_text element_blank scale_color_manual scale_fill_manual
-#' @importFrom ggplot2 geom_point geom_errorbar scale_x_log10 xlim coord_cartesian geom_smooth
-#' @importFrom tidyr gather separate
-#' @importFrom dplyr %>%
 NULL
 
 
 #' Plot Lifetime Risk Results
 #'
-#' Plots cumulative incidence curves (adjusted or unadjusted) for two groups from a pie_analysis result.
+#' Plots cumulative incidence curves (adjusted or unadjusted) for each group in a pie_analysis result.
 #'
 #' @param result Output from pie_analysis function
 #' @param adjusted Logical; use adjusted (TRUE) or unadjusted (FALSE) estimates (default: TRUE)
@@ -18,8 +15,14 @@ NULL
 #' @param colors Vector of colors for groups (optional)
 #' @return A ggplot object
 #' @details
-#' Plots cumulative incidence with confidence intervals for two groups. Use label_names to customize legend labels.
+#' Plots cumulative incidence with confidence intervals for every group in the result. Use label_names to customize legend labels.
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
 #' plot_lifetime_risk(result, adjusted = TRUE)
 #' @export
@@ -91,8 +94,14 @@ plot_lifetime_risk <- function(result,
 #' @param output_file Path and name of the output CSV file. Default is "analysis_output.csv".
 #' @return Invisibly returns a data frame containing the combined estimates.
 #' @details
-#' Each analysis object contributes two columns (one per group). For multiple objects, columns are suffixed.
+#' Each analysis object contributes one column per group. For multiple objects, columns are suffixed.
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
 #' create_lifetime_csv(result, adjusted = TRUE, output_file = tempfile())
 #' @export
@@ -140,48 +149,49 @@ create_lifetime_csv <- function(..., adjusted = TRUE, output_file = "analysis_ou
 #' Extracts the number at risk at specified ages for each group from a pie_analysis result.
 #'
 #' @param analysis_obj An object returned by pie_analysis
-#' @param group1_label Label for group1 in the output
-#' @param group2_label Label for group2 in the output
+#' @param group_labels Optional character vector of column labels for the groups in the output,
+#'   in the same order as \code{names(analysis_obj$summary_datasets)}. Defaults to the group names.
 #' @param age_points Vector of age points at which to display counts
-#' @return A dataframe with number at risk by group and age
+#' @return A data.frame with an \code{Age} column and one column of numbers at risk per group
 #' @details
-#' Requires that pie_analysis was run with debug=TRUE and that summary datasets (SDS1, SDS2) are available in the global environment.
+#' Uses the per-group summary datasets stored in \code{analysis_obj$summary_datasets}. For each
+#' requested age, the number at risk is taken from the closest age row in the summary data
+#' (the 999 total row is excluded).
 #' @examples
-#' # Only works if SDS1 and SDS2 exist in global environment
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
+#' result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
+#' get_number_at_risk_from_analysis(result, age_points = c(50, 60, 70))
 #' @export
 get_number_at_risk_from_analysis <- function(analysis_obj,
-                                             group1_label = "Group 1",
-                                             group2_label = "Group 2",
+                                             group_labels = NULL,
                                              age_points = c(50, 60, 70, 80, 90)) {
 
-  # Initialize result dataframe
+  if (!inherits(analysis_obj, "pie_analysis")) {
+    stop("analysis_obj must be an object returned by pie_analysis()")
+  }
+  sds_list <- analysis_obj$summary_datasets
+  if (length(sds_list) == 0) {
+    stop("analysis_obj contains no summary datasets; re-run pie_analysis() with the current package version")
+  }
+  if (is.null(group_labels)) {
+    group_labels <- names(sds_list)
+  } else if (length(group_labels) != length(sds_list)) {
+    stop("group_labels must have one label per group (", length(sds_list), ")")
+  }
+
   result <- data.frame(Age = age_points)
-
-  # Extract summary data (SDS objects) from the analysis
-  # If we have access to the internal summary datasets:
-  if (exists("SDS1", envir = .GlobalEnv) && exists("SDS2", envir = .GlobalEnv)) {
-    sds1 <- get("SDS1", envir = .GlobalEnv)
-    sds2 <- get("SDS2", envir = .GlobalEnv)
-
-    # Calculate counts at each age point for group 1
-    counts1 <- sapply(age_points, function(age_point) {
-      # Find the closest age row in the summary data
-      row <- sds1[which.min(abs(sds1$age - age_point)), ]
-      # Return the number at risk (R column)
-      return(row$R)
-    })
-
-    # Calculate counts for group 2
-    counts2 <- sapply(age_points, function(age_point) {
-      row <- sds2[which.min(abs(sds2$age - age_point)), ]
-      return(row$R)
-    })
-
-    # Add to result dataframe
-    result[[group1_label]] <- counts1
-    result[[group2_label]] <- counts2
-  } else {
-    warning("SDS1 and SDS2 objects not found. Make sure to run pie_analysis with debug=TRUE.")
+  for (j in seq_along(sds_list)) {
+    sds <- sds_list[[j]]
+    sds <- sds[sds$age != 999, ]
+    result[[group_labels[j]]] <- vapply(age_points, function(age_point) {
+      if (nrow(sds) == 0) return(NA_integer_)
+      as.integer(sds$R[which.min(abs(sds$age - age_point))])
+    }, integer(1))
   }
 
   return(result)

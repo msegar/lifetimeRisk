@@ -1,7 +1,3 @@
-library(survival)
-library(parallel)
-library(nnet)
-
 #' Calculate Disease-Free Survival and Overall Survival Times
 #'
 #' @description
@@ -62,9 +58,10 @@ library(nnet)
 #'        probability weights are computed. These weights are passed to survfit() so that
 #'        each stratum's survival curves reflect a standardized covariate distribution.
 #'        Weights are re-estimated within each bootstrap iteration for proper standard errors.
-#'        Requires the nnet package. Default is NULL (no adjustment).
+#'        Requires the nnet package (Suggests). Default is NULL (no adjustment).
 #' @param n_bootstrap Integer specifying the number of bootstrap samples for standard error
-#'        estimation. Default is 1000.
+#'        estimation. Default is 1000. Bootstrap streams are seeded from R's current RNG state,
+#'        so call \code{set.seed()} beforehand for reproducible standard errors.
 #' @param small_delta Numeric value added to zero time values to prevent computation issues.
 #'        Default is 0.001.
 #' @param maximum_time Optional decimal. Proportion of restriction time window to use.
@@ -155,8 +152,8 @@ library(nnet)
 #' \code{\link[survival]{Surv}}, \code{\link[survival]{survfit}}, \code{\link[nnet]{multinom}}
 #'
 #' @importFrom survival Surv survfit
-#' @importFrom parallel makeCluster stopCluster detectCores parLapply clusterExport clusterEvalQ
-#' @importFrom nnet multinom
+#' @importFrom parallel makeCluster stopCluster detectCores parLapply
+#' @importFrom parallel clusterSetRNGStream
 #'
 #' @export
 calculate_disease_free_survival <- function(data,
@@ -293,7 +290,7 @@ calculate_disease_free_survival <- function(data,
 
     # Get each person's probability of being in their observed stratum
     obs_stratum <- as.character(df$.strata_factor)
-    p_obs <- sapply(seq_len(nrow(df)), function(i) pred_probs[i, obs_stratum[i]])
+    p_obs <- pred_probs[cbind(seq_len(nrow(df)), match(obs_stratum, colnames(pred_probs)))]
 
     # Marginal probability of each stratum (for stabilization)
     marginal_probs <- table(df$.strata_factor) / nrow(df)
@@ -308,6 +305,53 @@ calculate_disease_free_survival <- function(data,
 
     return(w)
   }
+
+  # ---------------------------------------------------------------------------
+  # Fast weighted, left-truncated Kaplan-Meier RMST for the bootstrap.
+  # Gives the same value as summary(survfit(Surv(entry, exit, event) ~ 1, weights = w),
+  # rmean = tau)$table["rmean"], but the sorting is done once per stratum and each
+  # bootstrap resample is expressed as per-row frequency weights. Defined locally (not
+  # in the namespace) so the functions serialise cleanly to the parallel workers.
+  # ---------------------------------------------------------------------------
+  km_prep <- function(entry, exit, event, tau) {
+    event <- event == 1
+    times <- sort(unique(exit[event]))
+    times <- times[times <= tau]
+    list(
+      J = length(times),
+      at_risk_idx = findInterval(exit, times),   # at risk at t_j for j <= idx (exit >= t_j)
+      entered_idx = findInterval(entry, times),  # not yet entered at t_j for j <= idx (entry >= t_j)
+      event_idx = ifelse(event & exit <= tau, match(exit, times), 0L),
+      dt = diff(c(0, times, tau))
+    )
+  }
+  km_rmst <- function(prep, w) {
+    J <- prep$J
+    if (J == 0) return(sum(prep$dt))
+    wsum_by <- function(idx) {
+      keep <- idx > 0 & w > 0
+      out <- numeric(J)
+      if (any(keep)) {
+        r <- rowsum(w[keep], idx[keep])
+        out[as.integer(rownames(r))] <- r[, 1]
+      }
+      out
+    }
+    revcumsum <- function(x) rev(cumsum(rev(x)))
+    n_risk <- revcumsum(wsum_by(prep$at_risk_idx)) - revcumsum(wsum_by(prep$entered_idx))
+    d <- wsum_by(prep$event_idx)
+    h <- ifelse(d > 0, d / n_risk, 0)
+    sum(prep$dt * c(1, cumprod(1 - h)))
+  }
+
+  # Environment for functions sent to the bootstrap workers: its parent is the stats
+  # namespace (serialised by reference), so nothing from this package travels with it
+  make_worker_env <- function(objects) {
+    list2env(objects, envir = new.env(parent = asNamespace("stats")))
+  }
+  environment(km_prep) <- make_worker_env(list())
+  environment(km_rmst) <- make_worker_env(list())
+  environment(compute_iptw_weights) <- make_worker_env(list())
 
   # ---------------------------------------------------------------------------
   # Compute weights on the full dataset if IPTW is requested
@@ -334,81 +378,77 @@ calculate_disease_free_survival <- function(data,
 
     w <- data$iptw_weight
 
+    # se.fit = FALSE: the survfit SEs are unused (SEs come from the bootstrap), and with
+    # non-integer IPTW weights computing them is very slow
     fit_event <- survfit(Surv(data$entry_time, time_composite, composite_event) ~ 1,
-                         weights = w)
+                         weights = w, se.fit = FALSE)
     fit_overall <- survfit(Surv(data$entry_time, data[[time_death_col]], data[[death_col]]) ~ 1,
-                           weights = w)
+                           weights = w, se.fit = FALSE)
 
     # Calculate initial RMSTs
     rmst_event <- summary(fit_event, rmean = tau)$table["rmean"]
     rmst_overall <- summary(fit_overall, rmean = tau)$table["rmean"]
 
-    # Bootstrap calculations
-    n_cores <- max(1, detectCores() - 1)
-    cl <- makeCluster(n_cores)
-    on.exit(stopCluster(cl))
-
-    # Export required objects to cluster
-    export_vars <- c("time_event_col", "time_death_col", "event_col", "death_col",
-                     "strata_col", "adjust_cols", "use_iptw")
-    if (use_iptw) {
-      export_vars <- c(export_vars, "compute_iptw_weights")
-    }
-    clusterExport(cl, export_vars, envir = environment())
-    clusterEvalQ(cl, library(survival))
-    if (use_iptw) clusterEvalQ(cl, library(nnet))
+    # Bootstrap calculations use the cluster `cl` created once in the enclosing function
 
     # Determine which stratum this is
     this_stratum <- NULL
     if (!is.null(strata_col) && strata_col %in% names(data)) {
       this_stratum <- as.character(data[[strata_col]][1])
     }
-    clusterExport(cl, "this_stratum", envir = environment())
 
-    # Bootstrap function
-    boot_fun <- function(i, data, full_data, tau) {
-      if (use_iptw && !is.null(full_data)) {
-        # Resample the FULL dataset, re-estimate weights, then subset to this stratum
-        boot_idx <- sample(nrow(full_data), replace = TRUE)
-        boot_full <- full_data[boot_idx, ]
-        boot_full$iptw_weight <- compute_iptw_weights(boot_full, strata_col, adjust_cols)
-        boot_data <- boot_full[as.character(boot_full[[strata_col]]) == this_stratum, ]
-      } else {
-        # Resample within stratum
-        indices <- sample(nrow(data), replace = TRUE)
-        boot_data <- data[indices, ]
-      }
-
-      if (nrow(boot_data) < 5) return(c(NA, NA))
-
-      w_boot <- boot_data$iptw_weight
-      time_composite <- pmin(boot_data[[time_event_col]], boot_data[[time_death_col]])
-      boot_composite_event <- as.numeric(boot_data[[event_col]] == 1 | boot_data[[death_col]] == 1)
-
-      boot_fit_event <- tryCatch(
-        survfit(Surv(boot_data$entry_time, time_composite, boot_composite_event) ~ 1,
-                weights = w_boot),
-        error = function(e) NULL
-      )
-      boot_fit_overall <- tryCatch(
-        survfit(Surv(boot_data$entry_time, boot_data[[time_death_col]],
-                     boot_data[[death_col]]) ~ 1,
-                weights = w_boot),
-        error = function(e) NULL
-      )
-
-      if (is.null(boot_fit_event) || is.null(boot_fit_overall)) return(c(NA, NA))
-
-      event_rmst <- summary(boot_fit_event, rmean = tau)$table["rmean"]
-      overall_rmst <- summary(boot_fit_overall, rmean = tau)$table["rmean"]
-
-      c(event_rmst, overall_rmst)
+    # Precompute the sorted risk-set structure for this stratum's rows once
+    prep_event <- km_prep(data$entry_time, time_composite, composite_event, tau)
+    prep_overall <- km_prep(data$entry_time, data[[time_death_col]], data[[death_col]], tau)
+    n_rows <- nrow(data)
+    stratum_pos <- NULL
+    if (use_iptw && !is.null(full_data)) {
+      # Positions of this stratum's rows within full_data (same order as `data`)
+      stratum_pos <- which(as.character(full_data[[strata_col]]) == this_stratum)
     }
 
-    # Run bootstrap
-    set.seed(888)
-    boot_results <- parLapply(cl, 1:n_bootstrap, boot_fun,
-                              data = data, full_data = full_data, tau = tau)
+    # Bootstrap function: a resample is represented as frequency weights on the original rows
+    boot_fun <- function(i) {
+      if (use_iptw && !is.null(full_data)) {
+        # Resample the FULL dataset, re-estimate weights, then keep this stratum's rows.
+        # Duplicated rows share covariates and so share a weight, so summing weights by
+        # original row is exactly equivalent to analysing the resampled rows.
+        boot_idx <- sample(nrow(full_data), replace = TRUE)
+        boot_full <- full_data[boot_idx, ]
+        boot_w <- compute_iptw_weights(boot_full, strata_col, adjust_cols)
+        w_full <- numeric(nrow(full_data))
+        agg <- rowsum(boot_w, boot_idx)
+        w_full[as.integer(rownames(agg))] <- agg[, 1]
+        w_boot <- w_full[stratum_pos]
+        n_boot <- sum(as.character(boot_full[[strata_col]]) == this_stratum)
+      } else {
+        # Resample within stratum
+        indices <- sample(n_rows, replace = TRUE)
+        w_boot <- w * tabulate(indices, nbins = n_rows)
+        n_boot <- n_rows
+      }
+
+      if (n_boot < 5) return(c(NA, NA))
+
+      c(km_rmst(prep_event, w_boot), km_rmst(prep_overall, w_boot))
+    }
+
+    # Ship only what boot_fun needs. Without this, the closure drags along every enclosing
+    # frame (including the full input data) and the package namespace, which forces each
+    # worker to load lifetimeRisk and all of its imports.
+    environment(boot_fun) <- make_worker_env(list(
+      use_iptw = use_iptw, full_data = if (use_iptw) full_data else NULL,
+      strata_col = strata_col, adjust_cols = adjust_cols, this_stratum = this_stratum,
+      stratum_pos = stratum_pos, n_rows = n_rows, w = w,
+      prep_event = prep_event, prep_overall = prep_overall,
+      km_rmst = km_rmst, compute_iptw_weights = compute_iptw_weights
+    ))
+
+    # Run bootstrap. Seed the worker RNG streams from the caller's RNG state so that
+    # set.seed() before calling this function gives reproducible SEs (seeding the master
+    # process alone has no effect on PSOCK workers).
+    clusterSetRNGStream(cl, iseed = sample.int(.Machine$integer.max, 1))
+    boot_results <- parLapply(cl, seq_len(n_bootstrap), boot_fun)
     boot_matrix <- do.call(rbind, boot_results)
 
     # Remove failed bootstrap iterations
@@ -442,15 +482,18 @@ calculate_disease_free_survival <- function(data,
   # ---------------------------------------------------------------------------
   use_iptw <- !is.null(adjust_cols)
 
+  # Start the bootstrap workers once and reuse them for every stratum
+  n_cores <- max(1, min(detectCores() - 1, n_bootstrap, na.rm = TRUE))
+  cl <- makeCluster(n_cores)
+  on.exit(stopCluster(cl), add = TRUE)
+
   if (!is.null(strata_col)) {
     # Get unique values from strata column
     strata_values <- working_data[[strata_col]]
 
     # Handle different types
     if (is.factor(strata_values)) {
-      strata_levels <- levels(strata_values)
-    } else if (is.numeric(strata_values)) {
-      strata_levels <- sort(unique(strata_values))
+      strata_levels <- levels(droplevels(strata_values))
     } else {
       strata_levels <- sort(unique(strata_values))
     }
@@ -495,12 +538,11 @@ calculate_disease_free_survival <- function(data,
 #' @export
 print.survival_results <- function(x, digits = 2, ci = FALSE, ...) {
   format_estimate <- function(est, se) {
+    f <- function(z) formatC(z, format = "f", digits = digits)
     if (ci) {
-      lower <- est - 1.96 * se
-      upper <- est + 1.96 * se
-      sprintf("%.2f (%.2f, %.2f)", est, lower, upper)
+      paste0(f(est), " (", f(est - 1.96 * se), ", ", f(est + 1.96 * se), ")")
     } else {
-      sprintf("%.2f (%.2f)", est, se)
+      paste0(f(est), " (", f(se), ")")
     }
   }
 
@@ -514,6 +556,7 @@ print.survival_results <- function(x, digits = 2, ci = FALSE, ...) {
     check.names = FALSE
   )
   print.data.frame(df, row.names = FALSE)
+  invisible(x)
 }
 
 #' Print Method for Stratified Survival Results
@@ -532,12 +575,11 @@ print.survival_results <- function(x, digits = 2, ci = FALSE, ...) {
 #' @export
 print.stratified_survival_results <- function(x, digits = 2, ci = FALSE, ...) {
   format_estimate <- function(est, se) {
+    f <- function(z) formatC(z, format = "f", digits = digits)
     if (ci) {
-      lower <- est - 1.96 * se
-      upper <- est + 1.96 * se
-      sprintf("%.2f (%.2f, %.2f)", est, lower, upper)
+      paste0(f(est), " (", f(est - 1.96 * se), ", ", f(est + 1.96 * se), ")")
     } else {
-      sprintf("%.2f (%.2f)", est, se)
+      paste0(f(est), " (", f(se), ")")
     }
   }
 
@@ -560,4 +602,5 @@ print.stratified_survival_results <- function(x, digits = 2, ci = FALSE, ...) {
   }))
 
   print.data.frame(results_df, row.names = FALSE)
+  invisible(x)
 }

@@ -1,10 +1,3 @@
-#' @importFrom ggplot2 ggplot aes geom_ribbon geom_line labs theme_minimal theme
-#' @importFrom ggplot2 element_text element_blank scale_color_manual scale_fill_manual
-#' @importFrom ggplot2 geom_point geom_errorbar
-#' @importFrom tidyr gather separate
-#' @importFrom dplyr %>%
-NULL
-
 #' Main Analysis Function
 #'
 #' Performs person-year and lifetime risk analysis, including age-specific rates and cumulative incidence, for the overall population or by group.
@@ -17,20 +10,27 @@ NULL
 #' @param group_levels Vector of group levels to analyze (NULL to auto-detect all levels)
 #' @param age_free Starting age for survival analysis
 #' @param debug If TRUE, save intermediate datasets to global environment
+#' @param verbose If TRUE (default), print a progress message
 #' @return An S3 object of class 'pie_analysis' containing:
 #'   - age_specific_rates: list of data.tables by group
 #'   - cumulative_incidence: list of data.frames by group
-#'   - summary_datasets: list of summary tables by group
+#'   - summary_datasets: list of summary tables (number at risk, events, competing events, weights by age) by group
 #'   - parameters: list of analysis parameters
 #' @details
 #' This function implements the full PIE macro workflow, including person-year expansion, age-specific rates, and cumulative incidence with and without competing risk adjustment. Handles any number of groups.
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' result <- pie_analysis(test_data, min_age = 50, max_age = 80, age_group_width = 5, group_var = "group", age_free = 50)
 #' summary(result)
 #' @export
 pie_analysis <- function(data, min_age, max_age, age_group_width,
                          group_var = NULL, group_levels = NULL, age_free,
-                         output1 = NULL, output2 = NULL, debug = FALSE) {
+                         debug = FALSE, verbose = TRUE) {
 
   # Handle grouping BEFORE creating person-year data
   if (is.null(group_var)) {
@@ -47,7 +47,7 @@ pie_analysis <- function(data, min_age, max_age, age_group_width,
   }
 
   # Now create_person_year_data always finds the 'group' column it expects
-  py_data <- create_person_year_data(data, min_age, max_age, debug)
+  py_data <- create_person_year_data(data, min_age, max_age, debug = debug, verbose = verbose)
 
   results <- list(
     age_specific_rates = list(),
@@ -68,9 +68,11 @@ pie_analysis <- function(data, min_age, max_age, age_group_width,
 
     rates_group <- calculate_age_specific_rates(data_group, age_group_width, min_age)
     ci_group <- calculate_cumulative_incidence(data_group, age_free, debug)
+    sds_group <- create_summary_dataset(data_group, group_var = "group", level = level)
 
     results$age_specific_rates[[as.character(level)]] <- rates_group
     results$cumulative_incidence[[as.character(level)]] <- ci_group
+    results$summary_datasets[[as.character(level)]] <- sds_group
   }
 
   class(results) <- "pie_analysis"
@@ -92,6 +94,12 @@ pie_analysis <- function(data, min_age, max_age, age_group_width,
 #' @details
 #' For each group and starting age, runs the full analysis and extracts the final cumulative incidence (estimate and 95% CI).
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' create_lifetime_risk_table(test_data, index_ages = c(50, 60), max_age = 80, group_var = "group")
 #' @export
 create_lifetime_risk_table <- function(data, index_ages, max_age,
@@ -109,37 +117,40 @@ create_lifetime_risk_table <- function(data, index_ages, max_age,
     group_levels <- sort(unique(data[[group_var]]))
   }
 
-  # Calculate for each group
-  for (level in group_levels) {
-    risks <- sapply(index_ages, function(start_age) {
-      tryCatch({
-        result <- pie_analysis(
-          data = data,
-          min_age = start_age,
-          max_age = max_age,
-          age_group_width = age_group_width,
-          group_var = group_var,
-          group_levels = level,
-          age_free = start_age
-        )
+  # One pie_analysis per starting age covers every group; returns a 3 x G matrix (est, lcl, ucl)
+  level_names <- as.character(group_levels)
+  estimates <- lapply(index_ages, function(start_age) {
+    result <- tryCatch(
+      pie_analysis(
+        data = data,
+        min_age = start_age,
+        max_age = max_age,
+        age_group_width = age_group_width,
+        group_var = group_var,
+        group_levels = group_levels,
+        age_free = start_age,
+        verbose = FALSE
+      ),
+      error = function(e) {
+        warning("Lifetime risk could not be estimated from age ", start_age, ": ",
+                conditionMessage(e), call. = FALSE)
+        NULL
+      }
+    )
+    vapply(level_names, function(level) {
+      ci <- result$cumulative_incidence[[level]]
+      final_data <- if (adjusted) ci$adjusted else ci$unadjusted
+      if (is.null(final_data) || nrow(final_data) == 0) return(rep(NA_real_, 3))
+      final_row <- final_data[nrow(final_data), ]
+      c(final_row$est, final_row$lcl, final_row$ucl)
+    }, numeric(3))
+  })
 
-        # Get final risk
-        if (adjusted) {
-          final_data <- result$cumulative_incidence[[as.character(level)]]$adjusted
-        } else {
-          final_data <- result$cumulative_incidence[[as.character(level)]]$unadjusted
-        }
-
-        final_row <- tail(final_data, 1)
-        c(final_row$est, final_row$lcl, final_row$ucl)
-      }, error = function(e) {
-        rep(NA, 3)
-      })
-    })
-
-    col_name <- if(is.null(group_var)) "Overall" else as.character(level)
+  for (g in seq_along(level_names)) {
+    risks <- vapply(estimates, function(m) m[, g], numeric(3))
+    col_name <- if (is.null(group_var)) "Overall" else level_names[g]
     results[[col_name]] <- sprintf("%.1f (%.1f, %.1f)",
-                                   risks[1,], risks[2,], risks[3,])
+                                   risks[1, ], risks[2, ], risks[3, ])
   }
 
   names(results)[1] <- "Starting Age"
@@ -160,6 +171,7 @@ print.pie_analysis <- function(x, ...) {
   cat("  Age group width:", x$parameters$age_group_width, "years\n")
   cat("  Starting age for lifetime risk:", x$parameters$age_free, "years\n")
   cat("\nUse summary() for detailed results\n")
+  invisible(x)
 }
 
 #' Summary method for pie_analysis objects
@@ -195,4 +207,5 @@ summary.pie_analysis <- function(object, ...) {
     cat("\n")
   }
   cat("Note: Values shown as estimate (95% CI)\n")
+  invisible(object)
 }

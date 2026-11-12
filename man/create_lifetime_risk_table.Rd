@@ -39,5 +39,11 @@ Summarizes lifetime risk estimates for multiple starting ages and groups.
 For each group and starting age, runs the full analysis and extracts the final cumulative incidence (estimate and 95\% CI).
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 create_lifetime_risk_table(test_data, index_ages = c(50, 60), max_age = 80, group_var = "group")
 }

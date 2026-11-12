@@ -14,6 +14,12 @@ NULL
 #' and calculates the number of events, person-years, and incidence rate per 1000 person-years for each group.
 #' A total row is added (age_group = 88) summarizing all ages.
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' py <- create_person_year_data(test_data, 50, 80)
 #' calculate_age_specific_rates(py, 5, 50)
 #' @export
@@ -53,16 +59,23 @@ calculate_age_specific_rates <- function(data, age_group_width, min_age) {
 #' @param min_age Minimum age to consider
 #' @param max_age Maximum age to consider
 #' @param debug If TRUE, save intermediate datasets to global environment (for debugging)
+#' @param verbose If TRUE (default), print a progress message
 #' @return A data.table with columns: ids, age, status, astatus, weight, group
 #' @details
 #' For each individual, creates rows for each year at risk between entryage and survage (capped at max_age).
 #' Handles partial years and sets weights/status according to SAS PIE macro logic.
 #' Ages are converted to integers to ensure consistent data types throughout the function.
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' create_person_year_data(test_data, 50, 80)
 #' @export
-create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
-  message("Creating person-year dataset...")
+create_person_year_data <- function(data, min_age, max_age, debug = FALSE, verbose = TRUE) {
+  if (verbose) message("Creating person-year dataset...")
 
   # Convert to data.table
   dt <- as.data.table(copy(data))
@@ -90,7 +103,6 @@ create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
   dt[, weight := ifelse(status == 0 & survage < max_age & full != 1, 0.5, 1)]
 
   # Create final year records
-  message("Creating final year records...")
   final_records <- dt[, .(
     ids = ids,
     age = survage,
@@ -103,22 +115,21 @@ create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
 
   final_records <- final_records[age >= start]
 
-  # Create intermediate records
-  message("Creating intermediate records...")
-  intermediate_records <- dt[survage > start, {
-    ages <- seq(start, survage - 1)
-    .(
-      age = as.integer(ages),
-      status = 0L,
-      astatus = 0L,
-      weight = 1.0,
-      group = rep(group, length(ages)),
-      start = rep(start, length(ages))
-    )
-  }, by = ids]
+  # Create intermediate records (one row per full year from start to survage - 1), vectorised
+  inter <- dt[survage > start]
+  n_years <- inter$survage - inter$start
+  idx <- rep(seq_len(nrow(inter)), n_years)
+  intermediate_records <- data.table(
+    ids = inter$ids[idx],
+    age = inter$start[idx] + sequence(n_years) - 1L,
+    status = 0L,
+    astatus = 0L,
+    weight = 1.0,
+    group = inter$group[idx],
+    start = inter$start[idx]
+  )
 
   # Combine all records
-  message("Combining records...")
   all_records <- rbindlist(list(final_records, intermediate_records),
                            use.names = TRUE, fill = TRUE)
   setorder(all_records, ids, age)
@@ -147,6 +158,12 @@ create_person_year_data <- function(data, min_age, max_age, debug = FALSE) {
 #' @details
 #' Produces summary statistics by age, with special rows for age 90+ and total (age=999).
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' py <- create_person_year_data(test_data, 50, 80)
 #' create_summary_dataset(py, group_var = "group", level = "A")
 #' @export
@@ -199,31 +216,38 @@ create_summary_dataset <- function(data, group_var, level, dataset_name = NULL, 
 #' Follows the SAS PIE macro algorithm for cumulative incidence and standard error calculation.
 #' Returns both unadjusted and competing risk-adjusted estimates.
 #' @examples
+#' set.seed(1)
+#' test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+#' test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+#' test_data$status <- rbinom(200, 1, 0.3)
+#' test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+#' test_data$group <- sample(c("A", "B"), 200, TRUE)
 #' py <- create_person_year_data(test_data, 50, 80)
 #' calculate_cumulative_incidence(py, 50)
 #' @export
 calculate_cumulative_incidence <- function(data, age_free, debug = FALSE) {
   if (nrow(data) == 0) return(NULL)
 
-  # Create time scale starting at age_free
-  data <- as.data.table(data)
+  # Create time scale starting at age_free (copy so the caller's data is not modified by reference)
+  data <- copy(as.data.table(data))
   data[, ftime := age - age_free]
-  setorder(data, ftime)
 
-  # Risk table calculations
+  # Number at risk (R), primary events (E), and competing events (C) at each time
   risk_table <- data[, .(
     R = .N,
     E = sum(status),
     C = sum(astatus)
-  ), by = ftime]
+  ), keyby = ftime]
 
   if(debug) {
     assign("TEMP", copy(risk_table), envir = .GlobalEnv)
   }
 
-  # Get unique time points
-  times <- unique(data$ftime)
+  times <- risk_table$ftime
   n_times <- length(times)
+  R <- risk_table$R
+  E <- risk_table$E
+  C <- risk_table$C
 
   # Initialize vectors for calculations
   cs <- rep(1, n_times)  # Current survival
@@ -232,20 +256,14 @@ calculate_cumulative_incidence <- function(data, age_free, debug = FALSE) {
   cfa <- rep(0, n_times)  # Cumulative competing incidence
   cfstar <- rep(0, n_times)  # Cumulative incidence adjusted for competing risk
 
-  # SE calculation vectors
-  cvlp <- 0  # Cumulative variance for log product
-  v <- 0     # Variance
-  cov <- 0   # Covariance
+  # SE calculation accumulators (stored per time point so CIs are valid at every age)
+  cvlp <- rep(0, n_times)  # Cumulative variance for log product (Greenwood sum)
+  v <- rep(0, n_times)     # Variance term
+  cov <- rep(0, n_times)   # Covariance term
   a <- rep(0, n_times)  # A array from SAS
   b <- rep(0, n_times)  # B array from SAS
   fstara <- rep(0, n_times)  # FSTAR array from SAS
-
-  # Calculate at risk, events, and competing events at each time
-  risk_table <- data[, .(
-    R = .N,  # Number at risk
-    E = sum(status),  # Primary events
-    C = sum(astatus)  # Competing events
-  ), by = ftime]
+  cc_running <- 0  # Running sum of fstara[k] * (a[k] + b[k-1]) for k = 2..(i-1)
 
   # Calculate cumulative incidence and SE following SAS algorithm
   for (i in seq_len(n_times)) {
@@ -255,13 +273,16 @@ calculate_cumulative_incidence <- function(data, age_free, debug = FALSE) {
       cf[i] <- cf[i-1]
       cfa[i] <- cfa[i-1]
       cfstar[i] <- cfstar[i-1]
+      cvlp[i] <- cvlp[i-1]
+      v[i] <- v[i-1]
+      cov[i] <- cov[i-1]
     }
 
-    rt <- risk_table[i]
-    if (rt$R > 0) {
+    Ri <- R[i]; Ei <- E[i]; Ci <- C[i]
+    if (Ri > 0) {
       # Main calculations
-      H <- rt$E / rt$R  # Hazard rate
-      HA <- rt$C / rt$R  # Competing hazard rate
+      H <- Ei / Ri  # Hazard rate
+      HA <- Ci / Ri  # Competing hazard rate
 
       F <- H * cs[i]  # Incidence
       FA <- HA * csa[i]  # Competing event incidence
@@ -275,39 +296,36 @@ calculate_cumulative_incidence <- function(data, age_free, debug = FALSE) {
       cfstar[i] <- cfstar[i] + FSTAR
 
       # Standard error calculations
-      if (rt$E > 0) {
-        cvlp <- cvlp + rt$E / (rt$R * (rt$R - rt$E))
+      if (Ei > 0) {
+        cvlp[i] <- cvlp[i] + Ei / (Ri * (Ri - Ei))
       }
 
       # A and FSTAR arrays
-      a[i] <- -1/rt$R
+      a[i] <- -1/Ri
       fstara[i] <- FSTAR
 
       # B array calculations
-      if (i == 1) {
-        b[i] <- ifelse(rt$R > rt$C, rt$C / (rt$R * (rt$R - rt$C)), 0)
-      } else {
-        b[i] <- b[i-1] + ifelse(rt$R > rt$C, rt$C / (rt$R * (rt$R - rt$C)), 0)
-      }
+      b_inc <- if (Ri > Ci) Ci / (Ri * (Ri - Ci)) else 0
+      b[i] <- if (i == 1) b_inc else b[i-1] + b_inc
 
       # Covariance calculations
       if (i >= 3) {
-        cc <- 0
-        for (k in 2:(i-1)) {
-          cc <- cc + (fstara[k] * (a[k] + b[k-1]))
-        }
-        cov <- cov + FSTAR * cc
+        cov[i] <- cov[i] + FSTAR * cc_running
       }
 
       # Variance calculations
       bb <- if (i > 1) b[i-1] else 0
-      if (rt$E > 0) {
-        v <- v + (FSTAR^2) * (((rt$R - rt$E)/(rt$E * rt$R)) + bb)
+      if (Ei > 0) {
+        v[i] <- v[i] + (FSTAR^2) * (((Ri - Ei)/(Ei * Ri)) + bb)
       }
+    }
+
+    if (i >= 2) {
+      cc_running <- cc_running + fstara[i] * (a[i] + b[i-1])
     }
   }
 
-  # Calculate standard errors
+  # Calculate standard errors (per time point)
   se_cf <- sqrt((cs^2) * cvlp)
   se_cfstar <- sqrt(v + 2*cov)
 

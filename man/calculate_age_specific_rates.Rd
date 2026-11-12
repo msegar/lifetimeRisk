@@ -25,6 +25,12 @@ and calculates the number of events, person-years, and incidence rate per 1000 p
 A total row is added (age_group = 88) summarizing all ages.
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 py <- create_person_year_data(test_data, 50, 80)
 calculate_age_specific_rates(py, 5, 50)
 }

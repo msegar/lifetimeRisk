@@ -1,6 +1,3 @@
-library(testthat)
-source("helper-testdata.R")
-
 test_that("calculate_age_specific_rates returns correct structure", {
   py <- create_person_year_data(test_data, 50, 80)
   rates <- calculate_age_specific_rates(py, age_group_width = 5, min_age = 50)

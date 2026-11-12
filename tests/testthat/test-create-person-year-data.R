@@ -1,7 +1,3 @@
-library(testthat)
-
-source("helper-testdata.R")
-
 test_that("create_person_year_data works as expected", {
   py <- create_person_year_data(test_data, min_age = 50, max_age = 80)
   expect_s3_class(py, "data.table")

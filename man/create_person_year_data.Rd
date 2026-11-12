@@ -4,7 +4,7 @@
 \alias{create_person_year_data}
 \title{Create person-year dataset for analysis}
 \usage{
-create_person_year_data(data, min_age, max_age, debug = FALSE)
+create_person_year_data(data, min_age, max_age, debug = FALSE, verbose = TRUE)
 }
 \arguments{
 \item{data}{Input dataset (data.frame or data.table) with columns: ids, entryage, survage, status, astatus, group}
@@ -14,6 +14,8 @@ create_person_year_data(data, min_age, max_age, debug = FALSE)
 \item{max_age}{Maximum age to consider}
 
 \item{debug}{If TRUE, save intermediate datasets to global environment (for debugging)}
+
+\item{verbose}{If TRUE (default), print a progress message}
 }
 \value{
 A data.table with columns: ids, age, status, astatus, weight, group
@@ -27,5 +29,11 @@ Handles partial years and sets weights/status according to SAS PIE macro logic.
 Ages are converted to integers to ensure consistent data types throughout the function.
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 create_person_year_data(test_data, 50, 80)
 }

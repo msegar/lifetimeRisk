@@ -18,18 +18,19 @@ RoxygenNote: 7.3.3
 Imports: 
     data.table (>= 1.14.0),
     stats,
-    methods,
+    utils,
+    grDevices,
+    parallel,
     survival,
-    magrittr,
-    ggplot2 (>= 3.4.0),
-    tidyr,
-    dplyr
+    ggplot2 (>= 3.4.0)
 Depends:
     R (>= 3.3.0)
 Suggests: 
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    nnet,
+    segmented
 Config/testthat/edition: 3
 URL: https://github.com/msegar/lifetimeRisk
 BugReports: https://github.com/msegar/lifetimeRisk/issues

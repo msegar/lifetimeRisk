@@ -5,7 +5,6 @@
 ^.*\.git$
 ^.*\.gitignore$
 ^backup$
-^..Rcheck$
 ^Meta$
 ^README\.Rmd$
 ^sticker\.R$
@@ -14,3 +13,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^joss$
+^lifetime_risk_sticker\.png$
+^\.\.Rcheck$
+^LICENSE\.md$

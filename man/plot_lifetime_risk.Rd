@@ -30,12 +30,18 @@ plot_lifetime_risk(
 A ggplot object
 }
 \description{
-Plots cumulative incidence curves (adjusted or unadjusted) for two groups from a pie_analysis result.
+Plots cumulative incidence curves (adjusted or unadjusted) for each group in a pie_analysis result.
 }
 \details{
-Plots cumulative incidence with confidence intervals for two groups. Use label_names to customize legend labels.
+Plots cumulative incidence with confidence intervals for every group in the result. Use label_names to customize legend labels.
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
 plot_lifetime_risk(result, adjusted = TRUE)
 }

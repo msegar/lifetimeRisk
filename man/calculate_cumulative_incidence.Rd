@@ -24,6 +24,12 @@ Follows the SAS PIE macro algorithm for cumulative incidence and standard error 
 Returns both unadjusted and competing risk-adjusted estimates.
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 py <- create_person_year_data(test_data, 50, 80)
 calculate_cumulative_incidence(py, 50)
 }

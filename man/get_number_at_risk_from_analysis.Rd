@@ -6,29 +6,36 @@
 \usage{
 get_number_at_risk_from_analysis(
   analysis_obj,
-  group1_label = "Group 1",
-  group2_label = "Group 2",
+  group_labels = NULL,
   age_points = c(50, 60, 70, 80, 90)
 )
 }
 \arguments{
 \item{analysis_obj}{An object returned by pie_analysis}
 
-\item{group1_label}{Label for group1 in the output}
-
-\item{group2_label}{Label for group2 in the output}
+\item{group_labels}{Optional character vector of column labels for the groups in the output,
+in the same order as \code{names(analysis_obj$summary_datasets)}. Defaults to the group names.}
 
 \item{age_points}{Vector of age points at which to display counts}
 }
 \value{
-A dataframe with number at risk by group and age
+A data.frame with an \code{Age} column and one column of numbers at risk per group
 }
 \description{
 Extracts the number at risk at specified ages for each group from a pie_analysis result.
 }
 \details{
-Requires that pie_analysis was run with debug=TRUE and that summary datasets (SDS1, SDS2) are available in the global environment.
+Uses the per-group summary datasets stored in \code{analysis_obj$summary_datasets}. For each
+requested age, the number at risk is taken from the closest age row in the summary data
+(the 999 total row is excluded).
 }
 \examples{
-# Only works if SDS1 and SDS2 exist in global environment
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
+result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
+get_number_at_risk_from_analysis(result, age_points = c(50, 60, 70))
 }

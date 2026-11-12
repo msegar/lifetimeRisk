@@ -33,6 +33,12 @@ Summarizes person-year data by age and group, including total and 90+ rows.
 Produces summary statistics by age, with special rows for age 90+ and total (age=999).
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 py <- create_person_year_data(test_data, 50, 80)
 create_summary_dataset(py, group_var = "group", level = "A")
 }

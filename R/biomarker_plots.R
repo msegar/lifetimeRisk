@@ -1,6 +1,6 @@
 #' @importFrom ggplot2 ggplot aes geom_ribbon geom_line labs theme_minimal theme
 #' @importFrom ggplot2 element_text element_blank scale_color_manual scale_fill_manual
-#' @importFrom ggplot2 geom_point geom_errorbar scale_x_log10 xlim coord_cartesian geom_smooth
+#' @importFrom ggplot2 geom_point scale_x_log10 xlim coord_cartesian geom_smooth
 #' @importFrom ggplot2 scale_linetype_discrete scale_shape_discrete
 #' @importFrom grDevices rainbow
 NULL
@@ -36,40 +36,34 @@ NULL
 #' When smooth_line=TRUE, replaces the point-to-point line with a LOESS smooth and
 #' replaces the PIE confidence intervals with smooth-based confidence intervals.
 #' @examples
-#' # Add biomarker to test data
-#' test_data$biomarker <- rnorm(nrow(test_data), 100, 20)
+#' \donttest{
+#' set.seed(1)
+#' n <- 2000
+#' sim <- data.frame(ids = 1:n, entryage = sample(40:60, n, TRUE),
+#'                   sex = sample(c("M", "F"), n, TRUE),
+#'                   biomarker = rlnorm(n, 4.5, 1))
+#' sim$survage <- sim$entryage + sample(5:35, n, TRUE)
+#' sim$status <- rbinom(n, 1, plogis(-2 + 0.4 * log(sim$biomarker) - 1.5))
+#' sim$astatus <- ifelse(sim$status == 1, 0, rbinom(n, 1, 0.2))
 #'
-#' # Single target age (original functionality)
-#' plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50)
+#' # Single target age
+#' plot_biomarker_risk_continuum(sim, "biomarker", target_age = 50)
 #'
-#' # Multiple target ages with different colored lines
-#' plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55))
-#'
-#' # With custom age labels and colors
-#' plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55),
+#' # Multiple target ages with custom labels and colors
+#' plot_biomarker_risk_continuum(sim, "biomarker", target_age = c(45, 55),
 #'                               age_labels = c("45"="Starting at 45", "55"="Starting at 55"),
 #'                               colors = c("red", "blue"))
 #'
-#' # With log transformation and smoothing (good for biomarkers like NTproBNP)
-#' plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55),
-#'                               log_transform = TRUE, xlim = c(10, 1000), smooth_line = TRUE)
+#' # Log-scaled x-axis with a smoothed line and no points
+#' plot_biomarker_risk_continuum(sim, "biomarker", target_age = c(45, 55),
+#'                               log_transform = TRUE, smooth_line = TRUE,
+#'                               show_points = FALSE)
 #'
-#' # Clean smooth line without points
-#' plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55),
-#'                               smooth_line = TRUE, show_points = FALSE)
-#'
-#' # Stratified by Sex
-#' plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50,
-#'                               strata = "sex")
-#'
-#' # Stratified by Sex with custom labels
-#' plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50,
+#' # Stratified by sex with custom labels
+#' plot_biomarker_risk_continuum(sim, "biomarker", target_age = 50,
 #'                               strata = "sex",
 #'                               strata_labels = c("M"="Male", "F"="Female"))
-#'
-#' # Stratified by Sex with multiple ages (color=strata, linetype=age)
-#' plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55),
-#'                               strata = "sex")
+#' }
 #' @export
 plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
                                          max_age = 90, n_bins = 10,
@@ -186,7 +180,8 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
             max_age = max_age,
             age_group_width = 5,
             group_var = NULL,
-            age_free = age
+            age_free = age,
+            verbose = FALSE
           )
 
           # Extract final lifetime risk
@@ -390,7 +385,8 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
   # Apply custom strata labels if provided
   if (!is.null(strata_labels) && has_strata) {
     if (is.character(strata_labels) && !is.null(names(strata_labels))) {
-      strata_str <- as.character(strata_levels)
+      # Use the factor levels actually plotted so labels line up with colours
+      strata_str <- levels(risk_results$strata_factor)
       if (all(strata_str %in% names(strata_labels))) {
         p <- p +
           scale_color_manual(values = colors, labels = strata_labels[strata_str]) +
@@ -406,7 +402,8 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
   # Apply custom age labels if provided (for linetype when both strata and ages)
   if (!is.null(age_labels) && has_multiple_ages) {
     if (is.character(age_labels) && !is.null(names(age_labels))) {
-      target_age_str <- as.character(target_age)
+      # Use the factor levels actually plotted so labels line up with colours/linetypes
+      target_age_str <- levels(risk_results$target_age_factor)
       if (all(target_age_str %in% names(age_labels))) {
         if (has_strata) {
           # Age is shown via linetype
@@ -537,45 +534,33 @@ plot_biomarker_risk_continuum <- function(data, biomarker_col, target_age,
 #' }
 #'
 #' @examples
-#' # Example 1: Find max curvature point (default)
-#' p1 <- plot_biomarker_risk_continuum(
-#'   data = my_data,
-#'   biomarker_col = "ntprobnp",
-#'   target_age = 55,
-#'   n_bins = 40,
-#'   log_transform = TRUE
-#' )
+#' \donttest{
+#' set.seed(1)
+#' n <- 4000
+#' sim <- data.frame(ids = 1:n, entryage = sample(50:60, n, TRUE),
+#'                   biomarker = rlnorm(n, 4.5, 1))
+#' sim$survage <- sim$entryage + sample(5:35, n, TRUE)
+#' sim$status <- rbinom(n, 1, plogis(-3 + 0.6 * pmax(log(sim$biomarker) - 4, 0)))
+#' sim$astatus <- ifelse(sim$status == 1, 0, rbinom(n, 1, 0.2))
 #'
+#' p1 <- plot_biomarker_risk_continuum(sim, "biomarker", target_age = 55,
+#'                                     n_bins = 20, log_transform = TRUE)
+#'
+#' # Max curvature point (default)
 #' result <- find_inflection(p1$data, log_transform = TRUE)
-#' print(paste("Max curvature at:", round(result$point, 1), "pg/mL"))
+#' p1 + ggplot2::geom_vline(xintercept = result$point, linetype = "dashed", color = "red")
 #'
-#' # Add vertical line to plot
-#' p1 + geom_vline(xintercept = result$point,
-#'                 linetype = "dashed", color = "red", linewidth = 1)
-#'
-#' # Example 2: Segmented regression with 2 segments
-#' seg2 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented2")
-#' print(paste("Breakpoint:", round(seg2$point, 1)))
-#' print(seg2$ci)       # confidence intervals
-#' print(seg2$slopes)   # slopes per segment
-#'
-#' # Example 3: Segmented regression with 3 segments
-#' seg3 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented3")
-#' print(paste("First breakpoint (takeoff):", round(seg3$point, 1)))
-#' print(paste("All breakpoints:", paste(round(seg3$breakpoints, 1), collapse = ", ")))
-#'
-#' # Example 4: Interaction-based threshold search
+#' # Interaction-based threshold search
 #' intxn <- find_inflection(p1$data, log_transform = TRUE, method = "interaction")
-#' print(paste("First significant slope change at:", round(intxn$point, 1)))
-#' print(intxn$scan_results)  # full scan table
+#' intxn$scan_results
 #'
-#' # Example 5: Compare all methods
-#' methods <- c("max_curvature", "knee", "inflection", "interaction",
-#'              "segmented2", "segmented3")
-#' results <- lapply(methods, function(m) {
-#'   find_inflection(p1$data, log_transform = TRUE, method = m)
-#' })
-#' sapply(results, function(r) round(r$point, 1))
+#' # Segmented regression (requires the 'segmented' package)
+#' if (requireNamespace("segmented", quietly = TRUE)) {
+#'   seg2 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented2")
+#'   seg2$ci
+#'   seg2$slopes
+#' }
+#' }
 #'
 #' @seealso
 #' \code{\link{plot_biomarker_risk_continuum}} for generating the input risk data
@@ -618,6 +603,10 @@ find_inflection <- function(risk_data, log_transform = FALSE,
     n <- length(x)
     # Require at least 5 observations on each side
     min_edge <- 5
+    if (n < 2 * min_edge) {
+      stop("method = 'interaction' requires at least ", 2 * min_edge,
+           " biomarker bins; got ", n)
+    }
     candidate_idx <- seq(min_edge, n - min_edge)
 
     scan_df <- data.frame(
@@ -684,7 +673,7 @@ find_inflection <- function(risk_data, log_transform = FALSE,
     bp_est <- bp_matrix[, "Est."]
 
     # Get confidence intervals
-    ci_raw <- segmented::confint.segmented(seg_fit)
+    ci_raw <- confint(seg_fit)
 
     # Extract slope coefficients for each segment
     slope_info <- segmented::slope(seg_fit)

@@ -72,38 +72,32 @@ When smooth_line=TRUE, replaces the point-to-point line with a LOESS smooth and
 replaces the PIE confidence intervals with smooth-based confidence intervals.
 }
 \examples{
-# Add biomarker to test data
-test_data$biomarker <- rnorm(nrow(test_data), 100, 20)
+\donttest{
+set.seed(1)
+n <- 2000
+sim <- data.frame(ids = 1:n, entryage = sample(40:60, n, TRUE),
+                  sex = sample(c("M", "F"), n, TRUE),
+                  biomarker = rlnorm(n, 4.5, 1))
+sim$survage <- sim$entryage + sample(5:35, n, TRUE)
+sim$status <- rbinom(n, 1, plogis(-2 + 0.4 * log(sim$biomarker) - 1.5))
+sim$astatus <- ifelse(sim$status == 1, 0, rbinom(n, 1, 0.2))
 
-# Single target age (original functionality)
-plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50)
+# Single target age
+plot_biomarker_risk_continuum(sim, "biomarker", target_age = 50)
 
-# Multiple target ages with different colored lines
-plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55))
-
-# With custom age labels and colors
-plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55),
+# Multiple target ages with custom labels and colors
+plot_biomarker_risk_continuum(sim, "biomarker", target_age = c(45, 55),
                               age_labels = c("45"="Starting at 45", "55"="Starting at 55"),
                               colors = c("red", "blue"))
 
-# With log transformation and smoothing (good for biomarkers like NTproBNP)
-plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55),
-                              log_transform = TRUE, xlim = c(10, 1000), smooth_line = TRUE)
+# Log-scaled x-axis with a smoothed line and no points
+plot_biomarker_risk_continuum(sim, "biomarker", target_age = c(45, 55),
+                              log_transform = TRUE, smooth_line = TRUE,
+                              show_points = FALSE)
 
-# Clean smooth line without points
-plot_biomarker_risk_continuum(test_data, "ntprobnp", target_age = c(45, 55),
-                              smooth_line = TRUE, show_points = FALSE)
-
-# Stratified by Sex
-plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50,
-                              strata = "sex")
-
-# Stratified by Sex with custom labels
-plot_biomarker_risk_continuum(test_data, "biomarker", target_age = 50,
+# Stratified by sex with custom labels
+plot_biomarker_risk_continuum(sim, "biomarker", target_age = 50,
                               strata = "sex",
                               strata_labels = c("M"="Male", "F"="Female"))
-
-# Stratified by Sex with multiple ages (color=strata, linetype=age)
-plot_biomarker_risk_continuum(test_data, "biomarker", target_age = c(45, 55),
-                              strata = "sex")
+}
 }

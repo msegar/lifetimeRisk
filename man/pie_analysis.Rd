@@ -12,9 +12,8 @@ pie_analysis(
   group_var = NULL,
   group_levels = NULL,
   age_free,
-  output1 = NULL,
-  output2 = NULL,
-  debug = FALSE
+  debug = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -33,13 +32,15 @@ pie_analysis(
 \item{age_free}{Starting age for survival analysis}
 
 \item{debug}{If TRUE, save intermediate datasets to global environment}
+
+\item{verbose}{If TRUE (default), print a progress message}
 }
 \value{
 An S3 object of class 'pie_analysis' containing:
 \itemize{
 \item age_specific_rates: list of data.tables by group
 \item cumulative_incidence: list of data.frames by group
-\item summary_datasets: list of summary tables by group
+\item summary_datasets: list of summary tables (number at risk, events, competing events, weights by age) by group
 \item parameters: list of analysis parameters
 }
 }
@@ -50,6 +51,12 @@ Performs person-year and lifetime risk analysis, including age-specific rates an
 This function implements the full PIE macro workflow, including person-year expansion, age-specific rates, and cumulative incidence with and without competing risk adjustment. Handles any number of groups.
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 result <- pie_analysis(test_data, min_age = 50, max_age = 80, age_group_width = 5, group_var = "group", age_free = 50)
 summary(result)
 }

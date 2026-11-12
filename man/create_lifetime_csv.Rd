@@ -20,9 +20,15 @@ Invisibly returns a data frame containing the combined estimates.
 Exports lifetime risk estimates for one or more analysis objects to a CSV file.
 }
 \details{
-Each analysis object contributes two columns (one per group). For multiple objects, columns are suffixed.
+Each analysis object contributes one column per group. For multiple objects, columns are suffixed.
 }
 \examples{
+set.seed(1)
+test_data <- data.frame(ids = 1:200, entryage = sample(50:60, 200, TRUE))
+test_data$survage <- test_data$entryage + sample(1:25, 200, TRUE)
+test_data$status <- rbinom(200, 1, 0.3)
+test_data$astatus <- ifelse(test_data$status == 1, 0, rbinom(200, 1, 0.2))
+test_data$group <- sample(c("A", "B"), 200, TRUE)
 result <- pie_analysis(test_data, 50, 80, 5, group_var = "group", age_free = 50)
 create_lifetime_csv(result, adjusted = TRUE, output_file = tempfile())
 }

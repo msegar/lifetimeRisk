@@ -93,7 +93,10 @@ identifying where the flat region ends and the steep increase begins.
 \code{NA} if no inflection point exists.
 \item \code{"interaction"} scans candidate cutpoints and tests for a significant
 group × biomarker interaction, identifying where the slope first significantly
-steepens. Clinically intuitive and easy to explain; analogous to a Davies test.
+steepens. Clinically intuitive and easy to explain; analogous to a Davies test (1987). At each candidate cutpoint,
+participants were dichotomized and a linear model with a group × biomarker interaction term was fit; the lowest
+biomarker value yielding a significant interaction (p < 0.05) was taken as the threshold, indicating the point
+above which the dose–response relationship significantly steepens.
 \item \code{"segmented2"} fits a two-segment (hockey-stick) piecewise linear model.
 Most commonly used in biomedical literature. Provides CIs on the breakpoint.
 \item \code{"segmented3"} The threshold at which risk accelerated was identified using
@@ -103,45 +106,33 @@ region of the biomarker–risk continuum.
 }
 }
 \examples{
-# Example 1: Find max curvature point (default)
-p1 <- plot_biomarker_risk_continuum(
-  data = my_data,
-  biomarker_col = "ntprobnp",
-  target_age = 55,
-  n_bins = 40,
-  log_transform = TRUE
-)
+\donttest{
+set.seed(1)
+n <- 4000
+sim <- data.frame(ids = 1:n, entryage = sample(50:60, n, TRUE),
+                  biomarker = rlnorm(n, 4.5, 1))
+sim$survage <- sim$entryage + sample(5:35, n, TRUE)
+sim$status <- rbinom(n, 1, plogis(-3 + 0.6 * pmax(log(sim$biomarker) - 4, 0)))
+sim$astatus <- ifelse(sim$status == 1, 0, rbinom(n, 1, 0.2))
 
+p1 <- plot_biomarker_risk_continuum(sim, "biomarker", target_age = 55,
+                                    n_bins = 20, log_transform = TRUE)
+
+# Max curvature point (default)
 result <- find_inflection(p1$data, log_transform = TRUE)
-print(paste("Max curvature at:", round(result$point, 1), "pg/mL"))
+p1 + ggplot2::geom_vline(xintercept = result$point, linetype = "dashed", color = "red")
 
-# Add vertical line to plot
-p1 + geom_vline(xintercept = result$point,
-                linetype = "dashed", color = "red", linewidth = 1)
-
-# Example 2: Segmented regression with 2 segments
-seg2 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented2")
-print(paste("Breakpoint:", round(seg2$point, 1)))
-print(seg2$ci)       # confidence intervals
-print(seg2$slopes)   # slopes per segment
-
-# Example 3: Segmented regression with 3 segments
-seg3 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented3")
-print(paste("First breakpoint (takeoff):", round(seg3$point, 1)))
-print(paste("All breakpoints:", paste(round(seg3$breakpoints, 1), collapse = ", ")))
-
-# Example 4: Interaction-based threshold search
+# Interaction-based threshold search
 intxn <- find_inflection(p1$data, log_transform = TRUE, method = "interaction")
-print(paste("First significant slope change at:", round(intxn$point, 1)))
-print(intxn$scan_results)  # full scan table
+intxn$scan_results
 
-# Example 5: Compare all methods
-methods <- c("max_curvature", "knee", "inflection", "interaction",
-             "segmented2", "segmented3")
-results <- lapply(methods, function(m) {
-  find_inflection(p1$data, log_transform = TRUE, method = m)
-})
-sapply(results, function(r) round(r$point, 1))
+# Segmented regression (requires the 'segmented' package)
+if (requireNamespace("segmented", quietly = TRUE)) {
+  seg2 <- find_inflection(p1$data, log_transform = TRUE, method = "segmented2")
+  seg2$ci
+  seg2$slopes
+}
+}
 
 }
 \seealso{

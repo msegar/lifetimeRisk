@@ -11,7 +11,6 @@ Calculate lifetime risk of adverse outcomes accounting for competing risks.
 - Person-year calculations
 - Age-specific incidence rates
 - Cumulative incidence with competing risks
-- Age-adjusted rates
 - Flexible group analysis (overall or subgroups)
 - Scalable comparisons (any number of groups)
 - Publication-quality plots
@@ -143,14 +142,27 @@ print(lt_overall)
 
 ### Disease-Free Survival (Restricted Mean)
 
+Times are measured in years from enrollment (`baseline_age_col`); the time to the disease event should be censored at death.
+
 ```r
+dfs_data <- data.frame(
+  Age = sample_data$entryage,
+  time_to_death = runif(n, 5, 35)
+)
+dfs_data$time_to_event <- pmin(runif(n, 1, 40), dfs_data$time_to_death)
+dfs_data$event <- as.integer(dfs_data$time_to_event < dfs_data$time_to_death)
+dfs_data$death <- rbinom(n, 1, 0.6)
+
+set.seed(1)  # makes bootstrap SEs reproducible
 res <- calculate_disease_free_survival(
-  data = sample_data,
-  time_event_col = "survage",
-  time_death_col = "survage",
-  event_col = "status",
-  death_col = "astatus",
+  data = dfs_data,
+  time_event_col = "time_to_event",
+  time_death_col = "time_to_death",
+  event_col = "event",
+  death_col = "death",
+  baseline_age_col = "Age",
   index_age = 45,
+  restriction_time = 90,
   n_bootstrap = 100
 )
 print(res)
@@ -167,6 +179,8 @@ print(res)
 - `create_lifetime_csv()`: Export lifetime risk estimates to CSV
 - `calculate_disease_free_survival()`: Estimate disease-free and overall survival (restricted mean)
 - `get_number_at_risk_from_analysis()`: Extract number at risk at specific ages from analysis
+- `plot_biomarker_risk_continuum()`: Plot lifetime risk across bins of a continuous biomarker
+- `find_inflection()`: Identify transition points (curvature, knee, inflection, interaction scan, segmented regression) in a biomarker-risk curve
 
 ## Testing
 
@@ -179,14 +193,13 @@ devtools::test()
 
 ## Reproducibility & Validation
 - All statistical results are validated against the original SAS PIE macro.
-- Bootstrapping uses a fixed seed for reproducibility.
+- Bootstrap streams are seeded from R's RNG, so call `set.seed()` first for reproducible standard errors.
 - Extensive tests cover edge cases and regression.
 
 ## Documentation
 - See function documentation via `?function_name` in R.
 - For detailed examples, see the vignettes and test files.
 
-## Citation
 ## How to Cite
 If you use lifetimeRisk in your research, please cite:
 
